@@ -3,7 +3,7 @@
 このリポジトリを扱う自動化エージェント向けの手順をまとめています。
 
 ## TransitionDrivenStateMachine モジュール生成
-1. `TransitionDrivenStateMachine_Instruction.md` を読み、ディレクトリ/ファイル/テスト構成を確認する。
+1. `instruction/1_TransitionDrivenStateMachine_Instruction.md` を読み、ディレクトリ/ファイル/テスト構成を確認する。
 2. 指示書どおりに Core プロトコル、ステートマシン本体、サンプル Player ドメイン、テストを生成する。
 3. 生成後は `swift test` を実行し、ログが想定どおりかチェックする。
 

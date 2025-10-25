@@ -238,4 +238,4 @@ final class TransitionDrivenStateMachineTests: XCTestCase {
 - 今後の予定: Observation 対応版（`@ObservableStateMachine`）と Middleware 追加。
 
 ## 納品形態
-この指示書（`TransitionDrivenStateMachine_Instruction.md`）を自動生成エージェントに渡すだけで、コアプロトコル、アクター、サンプルドメイン、テスト、副作用、拡張ポイントを含むモジュール一式を構築できます。
+この指示書（`instruction/1_TransitionDrivenStateMachine_Instruction.md`）を自動生成エージェントに渡すだけで、コアプロトコル、アクター、サンプルドメイン、テスト、副作用、拡張ポイントを含むモジュール一式を構築できます。
