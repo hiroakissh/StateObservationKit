@@ -1,0 +1,23 @@
+name: Swift Tests
+
+on:
+  push:
+    branches: [ "main", "feature/*" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  tests:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Swift
+        uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: "6.1.0"
+          swift-signing-key-url: "https://swift.org/keys/all-keys.asc"
+
+      - name: Run tests
+        run: swift test

@@ -1,0 +1,40 @@
+{
+  "": {
+    "swift-dependencies": "/Users/hiroaki/projects/myPackage/StateObservationKit/.build/arm64-apple-macosx/debug/StateObservationKit.build/master.swiftdeps"
+  },
+  "/Users/hiroaki/projects/myPackage/StateObservationKit/Sources/StateObservationKit/Core/ActionType.swift": {
+    "dependencies": "/Users/hiroaki/projects/myPackage/StateObservationKit/.build/arm64-apple-macosx/debug/StateObservationKit.build/ActionType.d",
+    "object": "/Users/hiroaki/projects/myPackage/StateObservationKit/.build/arm64-apple-macosx/debug/StateObservationKit.build/ActionType.swift.o",
+    "swiftmodule": "/Users/hiroaki/projects/myPackage/StateObservationKit/.build/arm64-apple-macosx/debug/StateObservationKit.build/ActionType~partial.swiftmodule",
+    "swift-dependencies": "/Users/hiroaki/projects/myPackage/StateObservationKit/.build/arm64-apple-macosx/debug/StateObservationKit.build/ActionType.swiftdeps",
+    "diagnostics": "/Users/hiroaki/projects/myPackage/StateObservationKit/.build/arm64-apple-macosx/debug/StateObservationKit.build/ActionType.dia"
+  },
+  "/Users/hiroaki/projects/myPackage/StateObservationKit/Sources/StateObservationKit/Core/StateType.swift": {
+    "dependencies": "/Users/hiroaki/projects/myPackage/StateObservationKit/.build/arm64-apple-macosx/debug/StateObservationKit.build/StateType.d",
+    "object": "/Users/hiroaki/projects/myPackage/StateObservationKit/.build/arm64-apple-macosx/debug/StateObservationKit.build/StateType.swift.o",
+    "swiftmodule": "/Users/hiroaki/projects/myPackage/StateObservationKit/.build/arm64-apple-macosx/debug/StateObservationKit.build/StateType~partial.swiftmodule",
+    "swift-dependencies": "/Users/hiroaki/projects/myPackage/StateObservationKit/.build/arm64-apple-macosx/debug/StateObservationKit.build/StateType.swiftdeps",
+    "diagnostics": "/Users/hiroaki/projects/myPackage/StateObservationKit/.build/arm64-apple-macosx/debug/StateObservationKit.build/StateType.dia"
+  },
+  "/Users/hiroaki/projects/myPackage/StateObservationKit/Sources/StateObservationKit/Core/TransitionType.swift": {
+    "dependencies": "/Users/hiroaki/projects/myPackage/StateObservationKit/.build/arm64-apple-macosx/debug/StateObservationKit.build/TransitionType.d",
+    "object": "/Users/hiroaki/projects/myPackage/StateObservationKit/.build/arm64-apple-macosx/debug/StateObservationKit.build/TransitionType.swift.o",
+    "swiftmodule": "/Users/hiroaki/projects/myPackage/StateObservationKit/.build/arm64-apple-macosx/debug/StateObservationKit.build/TransitionType~partial.swiftmodule",
+    "swift-dependencies": "/Users/hiroaki/projects/myPackage/StateObservationKit/.build/arm64-apple-macosx/debug/StateObservationKit.build/TransitionType.swiftdeps",
+    "diagnostics": "/Users/hiroaki/projects/myPackage/StateObservationKit/.build/arm64-apple-macosx/debug/StateObservationKit.build/TransitionType.dia"
+  },
+  "/Users/hiroaki/projects/myPackage/StateObservationKit/Sources/StateObservationKit/PlayerExample.swift": {
+    "dependencies": "/Users/hiroaki/projects/myPackage/StateObservationKit/.build/arm64-apple-macosx/debug/StateObservationKit.build/PlayerExample.d",
+    "object": "/Users/hiroaki/projects/myPackage/StateObservationKit/.build/arm64-apple-macosx/debug/StateObservationKit.build/PlayerExample.swift.o",
+    "swiftmodule": "/Users/hiroaki/projects/myPackage/StateObservationKit/.build/arm64-apple-macosx/debug/StateObservationKit.build/PlayerExample~partial.swiftmodule",
+    "swift-dependencies": "/Users/hiroaki/projects/myPackage/StateObservationKit/.build/arm64-apple-macosx/debug/StateObservationKit.build/PlayerExample.swiftdeps",
+    "diagnostics": "/Users/hiroaki/projects/myPackage/StateObservationKit/.build/arm64-apple-macosx/debug/StateObservationKit.build/PlayerExample.dia"
+  },
+  "/Users/hiroaki/projects/myPackage/StateObservationKit/Sources/StateObservationKit/TransitionDrivenStateMachine.swift": {
+    "dependencies": "/Users/hiroaki/projects/myPackage/StateObservationKit/.build/arm64-apple-macosx/debug/StateObservationKit.build/TransitionDrivenStateMachine.d",
+    "object": "/Users/hiroaki/projects/myPackage/StateObservationKit/.build/arm64-apple-macosx/debug/StateObservationKit.build/TransitionDrivenStateMachine.swift.o",
+    "swiftmodule": "/Users/hiroaki/projects/myPackage/StateObservationKit/.build/arm64-apple-macosx/debug/StateObservationKit.build/TransitionDrivenStateMachine~partial.swiftmodule",
+    "swift-dependencies": "/Users/hiroaki/projects/myPackage/StateObservationKit/.build/arm64-apple-macosx/debug/StateObservationKit.build/TransitionDrivenStateMachine.swiftdeps",
+    "diagnostics": "/Users/hiroaki/projects/myPackage/StateObservationKit/.build/arm64-apple-macosx/debug/StateObservationKit.build/TransitionDrivenStateMachine.dia"
+  }
+}
