@@ -1,2 +1,10 @@
-.vscode/
-.build/
+.DS_Store
+.swiftpm
+/.build
+/Packages
+xcuserdata
+*.xccheckout
+*.xcuserstate
+.vscode/launch.json
+.vscode/settings.json
+DerivedData
