@@ -1,14 +1,10 @@
 #if canImport(SwiftUI) && canImport(Observation)
 import SwiftUI
 import Observation
-import StateObservationKit
-
-enum PlayerState: Equatable { case idle, playing, paused, stopped }
-enum PlayerAction { case play, pause, resume, stop }
 
 struct PlayerView_ObservationDriven: View {
-    @Bindable var machine = ObservationDrivenStateMachine(
-        initial: PlayerState.idle
+    @Bindable var machine = ObservationDrivenStateMachine<PlayerState, PlayerAction>(
+        initial: .idle
     ) { state, action in
         switch (state, action) {
         case (.idle, .play):
@@ -51,7 +47,7 @@ struct PlayerView_ObservationDriven: View {
     }
 }
 
-private extension ObservationDrivenStateMachine where State == PlayerState {
+private extension ObservationDrivenStateMachine where State == PlayerState, Action == PlayerAction {
     var stateLabel: String {
         switch state {
         case .idle: "Idle"
