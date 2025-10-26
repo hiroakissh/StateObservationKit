@@ -6,7 +6,7 @@ import Observation
 #if canImport(Observation)
 @Observable
 #endif
-public final class ObservationDrivenStateMachine<State: Equatable, Action> {
+public final class ObservationDrivenStateMachine<State: Equatable, Action>: ObservationStateMachineType {
     public private(set) var state: State
 #if canImport(Observation)
     @ObservationIgnored

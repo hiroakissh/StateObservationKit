@@ -7,6 +7,7 @@ StateObservationKit は、Swift Concurrency と SwiftUI Observation を活用し
 - **Observation 連携**: SwiftUI 向けの軽量 Reducer 形式で状態更新を自動バインディング。
 - **Hook / Effect**: 遷移毎の副作用やフックでロジックの見通しを確保。
 - **サンプル実装**: Player ドメインを使った遷移駆動 / 観測駆動の両方のサンプルを収録。
+- **モック対応**: プロトコルとテスト用モックを同梱し、副作用に依存しないユニットテストを書けます。
 
 ## Choose Your Style
 
@@ -14,6 +15,7 @@ StateObservationKit は、Swift Concurrency と SwiftUI Observation を活用し
 |------|-------------|-----------|
 | `TransitionDrivenStateMachine` | 明示的遷移と副作用を enum で管理。Actor 隔離で堅牢。 | ビジネスロジック / UseCase 層 |
 | `ObservationDrivenStateMachine` | SwiftUI フレンドリーな Reducer 形式。Observation で自動通知。 | UI / ViewModel 層 |
+| `ObservationDrivenStateMachineMock` | Reducer をすり替えて状態遷移を同期確認できるテストダブル。 | UI / ViewModel のユニットテスト |
 
 ### Example
 
@@ -36,17 +38,26 @@ let observationMachine = ObservationDrivenStateMachine(initial: PlayerState.idle
     }
 }
 observationMachine.dispatch(.play)
+
+// Mock (replace reducer and assert synchronously)
+let mockMachine = ObservationDrivenStateMachineMock(initial: PlayerState.idle) { state, action in
+    if action == .play { state = .playing }
+}
+mockMachine.dispatch(.play)
+XCTAssertEqual(mockMachine.state, .playing)
 ```
 
 ## ディレクトリ
 ```text
 Sources/
  └─ StateObservationKit/
-     ├─ Core/                // StateType / ActionType / TransitionType
-     ├─ TransitionDrivenStateMachine.swift
-     ├─ ObservationDrivenStateMachine.swift
-     ├─ PlayerExample.swift
-     └─ SwiftUIExample/
+    ├─ Core/                // StateType / ActionType / TransitionType / ObservationStateMachineType
+    ├─ TransitionDrivenStateMachine.swift
+    ├─ ObservationDrivenStateMachine.swift
+    ├─ Testing/
+    │   └─ ObservationDrivenStateMachineMock.swift
+    ├─ PlayerExample.swift
+    └─ SwiftUIExample/
          └─ PlayerView_ObservationDriven.swift
 Tests/
  └─ StateObservationKitTests/

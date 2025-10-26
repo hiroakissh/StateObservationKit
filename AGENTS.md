@@ -16,6 +16,7 @@
 - Observation フレームワークが利用できる環境では `@Observable` を付与し、利用できない場合でもビルドが通るよう条件付きコンパイルを用いる。
 - SwiftUI サンプルは `canImport(SwiftUI)` と `canImport(Observation)` の両方を満たす場合のみビルドされるようにする。
 - 既存の `PlayerState` / `PlayerAction` との重複定義を避け、共通ドメインモデルを参照する。
+- テストや UI 層で依存差し替えができるよう、StateMachine はプロトコルを介してモック化できる構造を保つ。
 
 ## コーディング方針
 
