@@ -1,23 +1,57 @@
 # StateObservationKit
 
-TransitionDrivenStateMachine は、`State × Action × Effect` を型レベルで宣言できる Swift Concurrency 対応の状態管理モジュールです。各遷移を `enum` で表現し、副作用を遷移単位にひもづけることで、アプリ全体のフローをひと目で理解できます。
+StateObservationKit は、Swift Concurrency と SwiftUI Observation を活用した 2 系統のステートマシンを提供します。明示的な遷移定義でビジネスロジックを厳密に制御する `TransitionDrivenStateMachine` と、Observation フレームワークに乗せたリアクティブな `ObservationDrivenStateMachine` を用途に応じて選べます。
 
 ## 特徴
-- **Transition enum**: すべての状態遷移を1つの `enum` で列挙。
-- **型安全な副作用**: 遷移と副作用をセットで宣言し、async/await で実行。
-- **Hook**: 状態遷移ごとに軽量な通知フックを発火。
-- **サンプル実装**: `PlayerTransition` が状態・アクション・副作用の結び付けを示します。
+- **Transition enum**: すべての状態遷移を 1 つの `enum` で列挙し、副作用を型安全にひも付け。
+- **Observation 連携**: SwiftUI 向けの軽量 Reducer 形式で状態更新を自動バインディング。
+- **Hook / Effect**: 遷移毎の副作用やフックでロジックの見通しを確保。
+- **サンプル実装**: Player ドメインを使った遷移駆動 / 観測駆動の両方のサンプルを収録。
+
+## Choose Your Style
+
+| Type | Description | Use case |
+|------|-------------|-----------|
+| `TransitionDrivenStateMachine` | 明示的遷移と副作用を enum で管理。Actor 隔離で堅牢。 | ビジネスロジック / UseCase 層 |
+| `ObservationDrivenStateMachine` | SwiftUI フレンドリーな Reducer 形式。Observation で自動通知。 | UI / ViewModel 層 |
+
+### Example
+
+```swift
+// Transition-driven (strict)
+let transitionMachine = TransitionDrivenStateMachine<PlayerTransition>(
+    initial: .idle,
+    hook: { print("🎯", $0) }
+)
+await transitionMachine.dispatch(.play)
+
+// Observation-driven (reducer-based)
+let observationMachine = ObservationDrivenStateMachine(initial: PlayerState.idle) { state, action in
+    switch (state, action) {
+    case (.idle, .play):
+        try? await AudioService.shared.play()
+        state = .playing
+    default:
+        break
+    }
+}
+observationMachine.dispatch(.play)
+```
 
 ## ディレクトリ
-```
+```text
 Sources/
  └─ StateObservationKit/
      ├─ Core/                // StateType / ActionType / TransitionType
      ├─ TransitionDrivenStateMachine.swift
-     └─ PlayerExample.swift
+     ├─ ObservationDrivenStateMachine.swift
+     ├─ PlayerExample.swift
+     └─ SwiftUIExample/
+         └─ PlayerView_ObservationDriven.swift
 Tests/
  └─ StateObservationKitTests/
-     └─ TransitionDrivenStateMachineTests.swift
+     ├─ TransitionDrivenStateMachineTests.swift
+     └─ ObservationDrivenStateMachineTests.swift
 ```
 
 ## 使い方
@@ -28,15 +62,17 @@ let machine = TransitionDrivenStateMachine<PlayerTransition>(
 )
 await machine.dispatch(.play)
 ```
-`PlayerTransition` の各ケースに `from` / `action` / `to` / `effect` を実装することで、状態と副作用を1箇所で管理できます。
+`PlayerTransition` の各ケースに `from` / `action` / `to` / `effect` を実装することで、状態と副作用を 1 箇所で管理できます。
+
+Observation 駆動のサンプルは `PlayerView_ObservationDriven` を参照してください。`@Bindable` でバインドした `ObservationDrivenStateMachine` が SwiftUI とリアルタイムに同期します。
 
 ## テスト
 サンドボックスの制限がない環境で以下を実行してください。
-```
+```bash
 swift test
 ```
 想定ログ:
-```
+```text
 🎯 State → idle
 ▶️ Playing...
 ⏸ Paused.
