@@ -1,5 +1,6 @@
-#if canImport(SwiftUI)
+#if canImport(SwiftUI) && canImport(Observation)
 import SwiftUI
+import Observation
 import StateObservationKit
 
 enum PlayerState: Equatable { case idle, playing, paused, stopped }
