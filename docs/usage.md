@@ -27,39 +27,41 @@ enum TaskEvent: EventType {
 ## 2. StateMachine を定義する
 
 ```swift
-final class TaskStateMachine: ObservationDrivenStateMachine<TaskState, TaskEvent> {
+@MainActor
+final class TaskStateMachine {
+    let machine: ObservationDrivenStateMachine<TaskState, TaskEvent>
     private let useCase: TaskUseCase
 
     init(useCase: TaskUseCase) {
         self.useCase = useCase
-        super.init(initial: .idle) { state, event in
+        self.machine = ObservationDrivenStateMachine(initial: .idle) { state, event in
             switch (state, event) {
             case (.idle, .startEdit):
-                .editing
+                state = .editing
             case (.editing, .save):
-                .saving
+                state = .saving
             case (.saving, .finish):
-                .completed
+                state = .completed
             case (_, .fail(let message)):
-                .error(message)
+                state = .error(message)
             }
         }
     }
 
-    func handle(_ event: TaskEvent) async {
+    func handle(_ event: TaskEvent) {
         switch event {
         case .save(let title):
-            await send(.save(title))
-            await useCase.saveTask(title)
+            machine.dispatch(.save(title))
+            Task { await useCase.saveTask(title) }
         default:
-            await send(event)
+            machine.dispatch(event)
         }
     }
 }
 ```
 
-- `ObservationDrivenStateMachine` を継承し、初期状態と Reducer (状態遷移ルール) を指定します。
-- 状態更新は `send(_:)` を通じて行い、外部副作用は UseCase に委譲します。
+- `ObservationDrivenStateMachine` はサブクラス化せず、Reducer (状態遷移ルール) をクロージャで渡してインスタンス化します。
+- 状態更新は `dispatch(_:)` を通じて行い、副作用は Reducer ではなく UseCase に委譲します。
 
 ## 3. UseCase で副作用を扱う
 
@@ -89,7 +91,8 @@ final class TaskUseCase {
 
 ```swift
 struct TaskView: View {
-    @Bindable var machine: TaskStateMachine
+    @Bindable var machine: ObservationDrivenStateMachine<TaskState, TaskEvent>
+    let handle: (TaskEvent) -> Void
     @State private var newTitle = ""
 
     var body: some View {
@@ -97,9 +100,7 @@ struct TaskView: View {
         case .idle:
             VStack {
                 TextField("Title", text: $newTitle)
-                Button("Save") {
-                    Task { await machine.handle(.save(newTitle)) }
-                }
+                Button("Save") { handle(.save(newTitle)) }
             }
 
         case .saving:
@@ -119,6 +120,16 @@ struct TaskView: View {
 ```
 
 - `@Bindable` で StateMachine を監視し、`switch` 文で全状態を描画します。
-- ボタン操作などのユーザーイベントから StateMachine の `handle(_:)` を呼び出し、副作用を含む遷移を制御します。
+- ボタン操作などのユーザーイベントから `TaskStateMachine.handle(_:)` を呼び出し、副作用と状態遷移を用途に応じて組み合わせます。
+
+```swift
+let machine = TaskStateMachine(useCase: .init(repository: TaskRepositoryImpl()))
+TaskView(
+    machine: machine.machine,
+    handle: { machine.handle($0) }
+)
+```
+
+- View には `ObservationDrivenStateMachine` を `@Bindable` で渡しつつ、イベントハンドラとして `TaskStateMachine` のメソッドを共有します。
 
 これらの手順をベースに、ドメイン固有の状態・イベント・副作用を組み合わせることで、状態駆動なアプリケーションを段階的に構築できます。
