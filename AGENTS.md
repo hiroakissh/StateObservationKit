@@ -17,6 +17,14 @@
 - SwiftUI サンプルは `canImport(SwiftUI)` と `canImport(Observation)` の両方を満たす場合のみビルドされるようにする。
 - 既存の `PlayerState` / `PlayerAction` との重複定義を避け、共通ドメインモデルを参照する。
 - テストや UI 層で依存差し替えができるよう、StateMachine はプロトコルを介してモック化できる構造を保つ。
+- Observation 対応マシンでは Reducer を内部アクターで逐次実行し、ディスパッチ順序どおりに状態が確定することを保証する。
+
+### モック活用ポリシー
+
+- `ObservationStateMachineType` への準拠を前提とし、依存注入の際はプロトコル型で受け取る。
+- `Sources/StateObservationKit/Testing/ObservationDrivenStateMachineMock.swift` のように、同期的な Reducer で状態検証を行うテストダブルを提供する。
+- モックでは副作用を発火させない。必要な場合は Reducer のクロージャ内で状態遷移のみを記述し、外部依存はスタブ化する。
+- 新たなステートマシンを追加する際も、同等のモック実装を `Testing/` 配下に用意し、README に利用手順を追記すること。
 
 ## コーディング方針
 
