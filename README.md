@@ -60,6 +60,23 @@ StateObservationKit is intended to live in the Application layer. It owns flow c
 | Transition | `TransitionType` | Defines a meaningful state change and its optional effect |
 | Machine | `TransitionDrivenStateMachine` / `ObservationDrivenStateMachine` | Interprets input, executes transitions, and exposes state |
 
+## Current Machine Contract
+
+### `TransitionDrivenStateMachine`
+
+- `dispatch(_:)` is the only public entry point for committing state changes.
+- If the current `(state, action)` pair does not match a transition, the machine throws `TransitionDispatchError.invalidTransition` and leaves state unchanged.
+- The machine runs a transition's `effect` before committing `state`.
+- If the `effect` throws a non-cancellation error, the machine leaves state unchanged and throws `TransitionDispatchError.effectFailed`.
+- If the `effect` returns a follow-up `Action`, the machine commits the current transition first and then dispatches the follow-up action from the new state.
+
+### `ObservationDrivenStateMachine`
+
+- `dispatch(_:)` returns immediately and schedules reducer execution asynchronously.
+- Reducer execution is serialized by an internal actor, so dispatched actions are applied in order.
+- `state` is updated on the main actor after each reducer run completes.
+- The current API does not surface a completion handle or rejection result; callers should treat `dispatch(_:)` as fire-and-forget.
+
 ## Example: Explicit Transitions
 
 ```swift

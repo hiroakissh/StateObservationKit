@@ -7,6 +7,7 @@ import Observation
 @Observable
 #endif
 @MainActor
+/// Publishes state for Observation-driven UI code while serializing reducer execution internally.
 public final class ObservationDrivenStateMachine<State: Equatable & Sendable, Action: Sendable>: ObservationStateMachineType {
     public private(set) var state: State
 #if canImport(Observation)
@@ -19,6 +20,8 @@ public final class ObservationDrivenStateMachine<State: Equatable & Sendable, Ac
         self.reducerExecutor = ReducerExecutor(initial: initial, reducer: reducer)
     }
 
+    /// Schedules reducer execution and returns immediately.
+    /// The current API does not expose a completion handle for the dispatched action.
     public func dispatch(_ action: Action) {
         let reducerExecutor = self.reducerExecutor
         Task {

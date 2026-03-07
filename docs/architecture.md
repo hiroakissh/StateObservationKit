@@ -67,6 +67,22 @@ StateObservationKit does not force one strict Clean Architecture interpretation.
 
 Both machine styles can share the same domain model. The package is intended to let teams choose the amount of structure they need without rewriting the whole application model.
 
+## Current Dispatch Semantics
+
+### `TransitionDrivenStateMachine`
+
+- Resolves a transition from the current `(state, action)` pair or throws `TransitionDispatchError.invalidTransition`.
+- Runs `effect` before committing state.
+- Preserves the current state when `effect` fails.
+- Applies a follow-up `Action` only after the current transition has been committed.
+
+### `ObservationDrivenStateMachine`
+
+- Accepts input through `dispatch(_:)` and returns immediately.
+- Serializes reducer execution internally to preserve dispatch order.
+- Publishes the resulting state after each reducer run completes on the main actor.
+- Currently exposes no completion handle or rejection result for a dispatched action.
+
 ## Integration Rules
 
 ### 1. Change state through `dispatch(_:)`
