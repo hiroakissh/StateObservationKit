@@ -1,5 +1,7 @@
 import Foundation
 
+/// Executes explicit `TransitionType` values for a `(state, action)` pair.
+/// State is committed only through `dispatch(_:)`, after the matched transition's effect succeeds.
 public actor TransitionDrivenStateMachine<T: TransitionType>: Sendable {
     public private(set) var state: T.State
     private let hook: (@Sendable (T.State) -> Void)?
@@ -10,6 +12,9 @@ public actor TransitionDrivenStateMachine<T: TransitionType>: Sendable {
         hook?(initial)
     }
 
+    /// Resolves the current `(state, action)` pair, runs the transition effect, and commits the next state.
+    /// - Throws: `TransitionDispatchError.invalidTransition` when no transition matches the current state and action,
+    ///   `TransitionDispatchError.effectFailed` when the effect throws a non-cancellation error, or `CancellationError`.
     public func dispatch(_ action: T.Action) async throws {
         // Process follow-up actions iteratively so chained transitions do not grow the call stack.
         var pendingAction: T.Action? = action

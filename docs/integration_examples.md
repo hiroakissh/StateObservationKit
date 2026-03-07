@@ -2,6 +2,11 @@
 
 StateObservationKit を既存のアプリ基盤に組み合わせる際のヒントと、代表的な統合パターンを紹介します。各サンプルでは状態遷移と副作用の境界を明確にし、テスタブルな構造を維持することが重要です。
 
+## PlayerExample の依存分離
+- `PlayerEnvironment` が `PlayerUseCaseProtocol` を保持し、StateMachine から concrete infrastructure を直接参照しない形を取ります。
+- `PlayerUseCase` が `AudioServiceProtocol` を受け取り、`PlayerTransition` の effect は UseCase を通じて副作用を実行します。
+- サンプルやテストでは `configurePlayerExampleEnvironment(_:)` を使って依存を差し替えられるため、状態遷移の検証時に live な audio 実装へ依存しません。
+
 ## ストップウォッチ / ポモドーロタイマー
 - `StopwatchUseCase` が経過時間の計測とポモドーロサイクルの切り替えを担当します。
 - StateMachine は `running` / `paused` / `break` などの状態を持ち、タイマーイベントを受けて遷移します。
@@ -21,5 +26,6 @@ StateObservationKit を既存のアプリ基盤に組み合わせる際のヒン
 - イベントシーケンスを `dispatch` し、期待される状態遷移をアサートするテストを用意します。
 - 非同期副作用は UseCase や Repository をモック化し、期待するイベントの発火を検証します。
 - `Testing/ObservationDrivenStateMachineMock` を活用して Reducer のロジックのみを検証し、副作用を排除した純粋なテストを実現します。
+- UI / ScreenModel が machine を保持する場合は `ObservationStateMachineType` を注入境界に置き、production では real machine、preview / state assertion では mock を差し替える形にすると一貫します。
 
 これらのサンプルを参考に、ドメイン固有のユースケースを組み合わせることで、状態駆動設計のメリットを最大限引き出せます。

@@ -19,6 +19,7 @@ Current State + Intent
 ```
 
 In the current API, the architectural idea of an `Intent` is represented by `Action`.
+In this document, `Intent` refers to the architecture concept, while code examples use `Action` / `ActionType` for the current public API.
 
 ## Core Philosophy
 
@@ -58,6 +59,37 @@ StateObservationKit is intended to live in the Application layer. It owns flow c
 | Intent | `ActionType` | Represents user or system input |
 | Transition | `TransitionType` | Defines a meaningful state change and its optional effect |
 | Machine | `TransitionDrivenStateMachine` / `ObservationDrivenStateMachine` | Interprets input, executes transitions, and exposes state |
+
+## Current Status And Reading Order
+
+StateObservationKit is being realigned toward the roadmap and architecture documents. That means some documentation describes the target direction while the current implementation still reflects an earlier API shape.
+
+Use this reading order when you need to decide what to trust:
+
+1. `ROADMAP.md` for project direction and target architecture
+2. `docs/architecture.md` for design boundaries and dependency direction
+3. This README for the current public API contract
+4. Inline type documentation and tests for current runtime behavior
+
+If the roadmap and current implementation differ, treat that gap as an active migration target, not as a documentation mistake.
+
+## Current Machine Contract
+
+### `TransitionDrivenStateMachine`
+
+- `dispatch(_:)` is the only public entry point for committing state changes.
+- If the current `(state, action)` pair does not match a transition, the machine throws `TransitionDispatchError.invalidTransition` and leaves state unchanged.
+- The machine runs a transition's `effect` before committing `state`.
+- If the `effect` throws a non-cancellation error, the machine leaves state unchanged and throws `TransitionDispatchError.effectFailed`.
+- If the `effect` returns a follow-up `Action`, the machine commits the current transition first and then dispatches the follow-up action from the new state.
+
+### `ObservationDrivenStateMachine`
+
+- `dispatch(_:)` returns immediately and schedules reducer execution asynchronously.
+- `send(_:)` enqueues work on the same ordered queue and returns after the resulting state has been published.
+- Reducer execution is serialized on an ordered internal queue, so `dispatch(_:)` and `send(_:)` are applied in call order.
+- `state` is updated on the main actor after each reducer run completes.
+- `dispatch(_:)` remains the fire-and-forget API; use `send(_:)` when tests or orchestration code need an explicit completion point.
 
 ## Example: Explicit Transitions
 
@@ -132,6 +164,9 @@ let machine = ObservationDrivenStateMachine<PlayerState, PlayerAction>(
         break
     }
 }
+
+let committedState = await machine.send(.play)
+print(committedState) // playing
 ```
 
 On platforms that support Observation, the machine can be used naturally from SwiftUI:
@@ -149,6 +184,8 @@ struct PlayerView: View {
     }
 }
 ```
+
+The snippet above is the smallest possible example, so the View talks to the machine directly. In the package sample, SwiftUI input goes through a ScreenModel-style `send(_:)` method first, and that wrapper decides when to call `dispatch(_:)`. Use that shape when side effects, `Result` handling, or follow-up actions should stay out of the View.
 
 ## Documentation
 
