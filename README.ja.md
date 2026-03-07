@@ -86,9 +86,10 @@ StateObservationKit は現在、ロードマップとアーキテクチャ文書
 ### `ObservationDrivenStateMachine`
 
 - `dispatch(_:)` は即座に戻り、Reducer 実行を非同期にスケジュールします。
-- Reducer 実行は内部アクターで逐次化されるため、dispatch 順序どおりに適用されます。
+- `send(_:)` は同じ順序付きキューに入力を積み、結果の state が公開されるまで待機します。
+- Reducer 実行は内部の順序付きキューで逐次化されるため、`dispatch(_:)` と `send(_:)` は呼び出し順に適用されます。
 - `state` は各 Reducer 実行が完了したあとに MainActor 上で更新されます。
-- current API では完了ハンドルや rejection result は公開しておらず、呼び出し側は `dispatch(_:)` を fire-and-forget として扱う必要があります。
+- `dispatch(_:)` は fire-and-forget 用の API として残し、テストや orchestration で完了点が必要な場合は `send(_:)` を使います。
 
 ## 例: 明示的な遷移
 
@@ -163,6 +164,9 @@ let machine = ObservationDrivenStateMachine<PlayerState, PlayerAction>(
         break
     }
 }
+
+let committedState = await machine.send(.play)
+print(committedState) // playing
 ```
 
 Observation 対応プラットフォームでは、SwiftUI から自然に利用できます。

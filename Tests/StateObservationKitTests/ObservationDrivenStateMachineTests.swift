@@ -27,14 +27,14 @@ final class ObservationDrivenStateMachineTests: XCTestCase {
     }
 
     @MainActor
-    func testReducerFlow() async throws {
+    func testSendWaitsForCommittedState() async {
         let machine = ObservationDrivenStateMachine(initial: "idle") { state, action in
             if action == "start" { state = "running" }
         }
 
         XCTAssertEqual(machine.state, "idle")
-        machine.dispatch("start")
-        try? await Task.sleep(for: .milliseconds(100))
+        let committedState = await machine.send("start")
+        XCTAssertEqual(committedState, "running")
         XCTAssertEqual(machine.state, "running")
     }
 
@@ -51,6 +51,19 @@ final class ObservationDrivenStateMachineTests: XCTestCase {
 
         XCTAssertEqual(mock.state, "running")
         XCTAssertEqual(mock.receivedActions, ["start"])
+    }
+
+    @MainActor
+    func testDispatchAndSendShareTheSameOrderedQueue() async {
+        let machine = ObservationDrivenStateMachine(initial: [String]()) { state, action in
+            state.append(action)
+        }
+
+        machine.dispatch("first")
+        let committedState = await machine.send("second")
+
+        XCTAssertEqual(committedState, ["first", "second"])
+        XCTAssertEqual(machine.state, ["first", "second"])
     }
 }
 

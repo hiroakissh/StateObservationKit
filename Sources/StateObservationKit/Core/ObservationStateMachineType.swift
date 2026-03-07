@@ -5,4 +5,6 @@ public protocol ObservationStateMachineType: AnyObject {
 
     var state: State { get }
     func dispatch(_ action: Action)
+    @discardableResult
+    func send(_ action: Action) async -> State
 }

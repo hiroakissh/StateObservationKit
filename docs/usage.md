@@ -124,7 +124,8 @@ final class TaskScreenModel {
 
 ### `send(_:)` と `dispatch(_:)` の役割
 
-- `dispatch(_:)` は Machine の低レベル API で、状態変更を確定するための primitive です。
+- `ObservationDrivenStateMachine.dispatch(_:)` は Machine の低レベル API で、入力を fire-and-forget に積む primitive です。
+- `ObservationDrivenStateMachine.send(_:)` は同じ順序付きキューを await し、state 確定後に戻ります。
 - `send(_:)` は UI / ScreenModel 側の入口で、入力の受理判定、UseCase 起動、`Result` から follow-up action への変換をまとめます。
 - SwiftUI View からは `send(_:)` を呼び、ScreenModel の内部で必要なタイミングだけ `dispatch(_:)` を使うと、View に orchestration が漏れません。
 

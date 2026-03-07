@@ -86,9 +86,10 @@ If the roadmap and current implementation differ, treat that gap as an active mi
 ### `ObservationDrivenStateMachine`
 
 - `dispatch(_:)` returns immediately and schedules reducer execution asynchronously.
-- Reducer execution is serialized by an internal actor, so dispatched actions are applied in order.
+- `send(_:)` enqueues work on the same ordered queue and returns after the resulting state has been published.
+- Reducer execution is serialized on an ordered internal queue, so `dispatch(_:)` and `send(_:)` are applied in call order.
 - `state` is updated on the main actor after each reducer run completes.
-- The current API does not surface a completion handle or rejection result; callers should treat `dispatch(_:)` as fire-and-forget.
+- `dispatch(_:)` remains the fire-and-forget API; use `send(_:)` when tests or orchestration code need an explicit completion point.
 
 ## Example: Explicit Transitions
 
@@ -163,6 +164,9 @@ let machine = ObservationDrivenStateMachine<PlayerState, PlayerAction>(
         break
     }
 }
+
+let committedState = await machine.send(.play)
+print(committedState) // playing
 ```
 
 On platforms that support Observation, the machine can be used naturally from SwiftUI:

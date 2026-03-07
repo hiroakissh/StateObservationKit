@@ -79,9 +79,10 @@ Both machine styles can share the same domain model. The package is intended to 
 ### `ObservationDrivenStateMachine`
 
 - Accepts input through `dispatch(_:)` and returns immediately.
-- Serializes reducer execution internally to preserve dispatch order.
+- `send(_:)` waits for the committed state on the same ordered reducer queue.
+- Serializes reducer execution internally so `dispatch(_:)` and `send(_:)` preserve call order.
 - Publishes the resulting state after each reducer run completes on the main actor.
-- Currently exposes no completion handle or rejection result for a dispatched action.
+- Treat `dispatch(_:)` as fire-and-forget and use `send(_:)` when an explicit completion point is required.
 
 ## Integration Rules
 

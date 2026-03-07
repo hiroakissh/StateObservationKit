@@ -23,4 +23,10 @@ public final class ObservationDrivenStateMachineMock<State: Equatable & Sendable
         reducer?(&nextState, action)
         state = nextState
     }
+
+    @discardableResult
+    public func send(_ action: Action) async -> State {
+        dispatch(action)
+        return state
+    }
 }
