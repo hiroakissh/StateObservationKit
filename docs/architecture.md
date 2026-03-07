@@ -150,4 +150,7 @@ The current architecture establishes the baseline. The roadmap expands it in fou
 - Better SwiftUI ergonomics and intent availability
 - Production tooling such as transition recording and debugging utilities
 
+During Q1 stabilization, treat the roadmap as the target direction and the README plus tests as the source for the current public contract.
+If they differ, the gap should be handled as planned migration work.
+
 See [ROADMAP.md](../ROADMAP.md) for the detailed plan.

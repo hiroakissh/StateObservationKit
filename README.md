@@ -60,6 +60,19 @@ StateObservationKit is intended to live in the Application layer. It owns flow c
 | Transition | `TransitionType` | Defines a meaningful state change and its optional effect |
 | Machine | `TransitionDrivenStateMachine` / `ObservationDrivenStateMachine` | Interprets input, executes transitions, and exposes state |
 
+## Current Status And Reading Order
+
+StateObservationKit is being realigned toward the roadmap and architecture documents. That means some documentation describes the target direction while the current implementation still reflects an earlier API shape.
+
+Use this reading order when you need to decide what to trust:
+
+1. `ROADMAP.md` for project direction and target architecture
+2. `docs/architecture.md` for design boundaries and dependency direction
+3. This README for the current public API contract
+4. Inline type documentation and tests for current runtime behavior
+
+If the roadmap and current implementation differ, treat that gap as an active migration target, not as a documentation mistake.
+
 ## Current Machine Contract
 
 ### `TransitionDrivenStateMachine`

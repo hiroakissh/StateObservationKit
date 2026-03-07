@@ -150,4 +150,7 @@ StateObservationKit は、意図的に次を避けます。
 - SwiftUI エルゴノミクスと intent availability の改善
 - transition recording や debugging utilities などの本番運用支援
 
+Q1 の安定化フェーズでは、ロードマップを目標方向、README と tests を current public contract の参照先として扱ってください。
+両者に差異がある場合、その差分は計画された migration work として扱います。
+
 詳細は [ROADMAP.ja.md](../ROADMAP.ja.md) を参照してください。
