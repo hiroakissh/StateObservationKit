@@ -9,7 +9,10 @@ struct PlayerView_ObservationDriven: View {
     init() {
         _machine = State(
             initialValue: ObservationDrivenStateMachine<PlayerState, PlayerAction>(
-                initial: .idle
+                initial: .idle,
+                canSend: { state, action in
+                    PlayerViewProjection.isActionAvailable(state: state, action: action)
+                }
             ) { state, action in
                 switch (state, action) {
                 case (.idle, .play):
@@ -33,22 +36,22 @@ struct PlayerView_ObservationDriven: View {
 
     var body: some View {
         @Bindable var machine = machine
+        let viewState = machine.project(PlayerViewProjection.init)
 
         VStack(spacing: 20) {
-            Text("🎧 State: \(machine.stateLabel)")
+            Text(viewState.title)
                 .font(.headline)
 
-            switch machine.state {
-            case .idle:
-                Button("▶️ Play") { machine.dispatch(.play) }
-            case .playing:
-                Button("⏸ Pause") { machine.dispatch(.pause) }
-                Button("🛑 Stop") { machine.dispatch(.stop) }
-            case .paused:
-                Button("▶️ Resume") { machine.dispatch(.resume) }
-                Button("🛑 Stop") { machine.dispatch(.stop) }
-            case .stopped:
-                Button("🔁 Reset") { machine.dispatch(.play) }
+            Button(viewState.primaryControl.title) {
+                machine.send(viewState.primaryControl.action)
+            }
+            .disabled(!machine.canSend(viewState.primaryControl.action))
+
+            if let secondaryControl = viewState.secondaryControl {
+                Button(secondaryControl.title) {
+                    machine.send(secondaryControl.action)
+                }
+                .disabled(!machine.canSend(secondaryControl.action))
             }
         }
         .padding()
@@ -56,13 +59,48 @@ struct PlayerView_ObservationDriven: View {
     }
 }
 
-private extension ObservationDrivenStateMachine where State == PlayerState, Action == PlayerAction {
-    var stateLabel: String {
+private struct PlayerViewProjection {
+    struct Control {
+        let title: String
+        let action: PlayerAction
+    }
+
+    let title: String
+    let primaryControl: Control
+    let secondaryControl: Control?
+
+    init(state: PlayerState) {
         switch state {
-        case .idle: "Idle"
-        case .playing: "Playing"
-        case .paused: "Paused"
-        case .stopped: "Stopped"
+        case .idle:
+            self.title = "🎧 State: Idle"
+            self.primaryControl = Control(title: "▶️ Play", action: .play)
+            self.secondaryControl = nil
+        case .playing:
+            self.title = "🎧 State: Playing"
+            self.primaryControl = Control(title: "⏸ Pause", action: .pause)
+            self.secondaryControl = Control(title: "🛑 Stop", action: .stop)
+        case .paused:
+            self.title = "🎧 State: Paused"
+            self.primaryControl = Control(title: "▶️ Resume", action: .resume)
+            self.secondaryControl = Control(title: "🛑 Stop", action: .stop)
+        case .stopped:
+            self.title = "🎧 State: Stopped"
+            self.primaryControl = Control(title: "🔁 Reset", action: .play)
+            self.secondaryControl = nil
+        }
+    }
+
+    static func isActionAvailable(state: PlayerState, action: PlayerAction) -> Bool {
+        switch (state, action) {
+        case (.idle, .play),
+             (.playing, .pause),
+             (.playing, .stop),
+             (.paused, .resume),
+             (.paused, .stop),
+             (.stopped, .play):
+            return true
+        default:
+            return false
         }
     }
 }

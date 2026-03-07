@@ -98,6 +98,8 @@ Presentation Projection
 SwiftUI View
 ```
 
+In practice, this can stay lightweight by deriving a view-facing model with `machine.project { ... }`.
+
 ### 5. Keep test doubles protocol-based
 
 `ObservationStateMachineType` and `ObservationDrivenStateMachineMock` exist so UI and application code can depend on abstractions instead of concrete runtime behavior.
@@ -108,6 +110,8 @@ StateObservationKit is intentionally SwiftUI-first where the platform allows it:
 
 - Use Observation when available
 - Support `@Bindable`-friendly usage
+- Expose control availability with `machine.canSend(_:)`
+- Map editable values back into actions with `machine.binding(_:send:)`
 - Keep state reads simple in the View layer
 - Preserve deterministic ordering by serializing reducer execution
 

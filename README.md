@@ -47,7 +47,7 @@ StateObservationKit is intended to live in the Application layer. It owns flow c
 | Type | Purpose | Typical use |
 | --- | --- | --- |
 | `TransitionDrivenStateMachine` | Makes transitions and effects explicit with strongly typed `enum` definitions. | Application flows, orchestration, business logic control |
-| `ObservationDrivenStateMachine` | Publishes state reactively for UI layers and serializes reducer execution. | SwiftUI-facing state machines, Observation integration |
+| `ObservationDrivenStateMachine` | Publishes state reactively for UI layers and serializes reducer execution. | SwiftUI-facing state machines, Observation integration, UI availability checks, and projection-driven views |
 | `ObservationDrivenStateMachineMock` | Replaces async behavior with deterministic synchronous state changes for tests. | Unit tests, UI tests, previews |
 
 ## Concept Mapping
@@ -115,7 +115,15 @@ print(await machine.state) // playing
 
 ```swift
 let machine = ObservationDrivenStateMachine<PlayerState, PlayerAction>(
-    initial: .idle
+    initial: .idle,
+    canSend: { state, action in
+        switch (state, action) {
+        case (.idle, .play), (.playing, .pause), (.paused, .play):
+            return true
+        default:
+            return false
+        }
+    }
 ) { state, action in
     switch (state, action) {
     case (.idle, .play):
@@ -141,13 +149,40 @@ struct PlayerView: View {
     @Bindable var machine: ObservationDrivenStateMachine<PlayerState, PlayerAction>
 
     var body: some View {
+        let viewState = machine.project(PlayerControls.init)
+
         VStack {
             Text("\(String(describing: machine.state))")
-            Button("Play") { machine.dispatch(.play) }
-            Button("Pause") { machine.dispatch(.pause) }
+            Button(viewState.primaryTitle) { machine.send(viewState.primaryAction) }
+                .disabled(!machine.canSend(viewState.primaryAction))
         }
     }
 }
+
+struct PlayerControls {
+    let primaryTitle: String
+    let primaryAction: PlayerAction
+
+    init(state: PlayerState) {
+        switch state {
+        case .idle, .paused:
+            self.primaryTitle = "Play"
+            self.primaryAction = .play
+        case .playing:
+            self.primaryTitle = "Pause"
+            self.primaryAction = .pause
+        }
+    }
+}
+```
+
+When a control needs a `Binding`, use `binding(_:send:)` to map value changes back into actions.
+
+```swift
+TextField(
+    "Title",
+    text: machine.binding(\.draftTitle, send: PlayerAction.titleChanged)
+)
 ```
 
 ## Documentation
