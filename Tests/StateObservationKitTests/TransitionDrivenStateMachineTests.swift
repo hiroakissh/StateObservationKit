@@ -71,6 +71,27 @@ final class TransitionDrivenStateMachineTests: XCTestCase {
         XCTAssertEqual(recorder.snapshot, [.idle])
     }
 
+    func testCancellationErrorPropagatesWithoutWrapping() async throws {
+        let recorder = StateRecorder<CancellationState>()
+        let machine = TransitionDrivenStateMachine<CancellationTransition>(
+            initial: .idle,
+            hook: { recorder.record($0) }
+        )
+
+        do {
+            try await machine.dispatch(.start)
+            XCTFail("Expected cancellation")
+        } catch is CancellationError {
+            // Expected path.
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+
+        let finalState = await machine.state
+        XCTAssertEqual(finalState, .idle)
+        XCTAssertEqual(recorder.snapshot, [.idle])
+    }
+
     func testFollowUpActionDispatchesNextTransition() async throws {
         let recorder = StateRecorder<FollowUpSuccessState>()
         let machine = TransitionDrivenStateMachine<FollowUpSuccessTransition>(
@@ -152,6 +173,32 @@ private enum FailingTransition: TransitionType {
     var effect: (@Sendable () async throws -> Action?)? {
         {
             throw TestFailure.sample
+        }
+    }
+}
+
+private enum CancellationState: StateType {
+    case idle
+    case loading
+}
+
+private enum CancellationAction: ActionType {
+    case start
+}
+
+private enum CancellationTransition: TransitionType {
+    typealias State = CancellationState
+    typealias Action = CancellationAction
+
+    case idle_start
+
+    var from: State { .idle }
+    var action: Action { .start }
+    var to: State { .loading }
+
+    var effect: (@Sendable () async throws -> Action?)? {
+        {
+            throw CancellationError()
         }
     }
 }

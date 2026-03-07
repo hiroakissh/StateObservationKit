@@ -11,27 +11,29 @@ public actor TransitionDrivenStateMachine<T: TransitionType>: Sendable {
     }
 
     public func dispatch(_ action: T.Action) async throws {
-        let transition = try matchTransition(for: action)
-        let followUpAction: T.Action?
+        // Process follow-up actions iteratively so chained transitions do not grow the call stack.
+        var pendingAction: T.Action? = action
 
-        if let effect = transition.effect {
-            do {
-                followUpAction = try await effect()
-            } catch {
-                throw TransitionDispatchError<T>.effectFailed(
-                    transition: transition,
-                    message: String(describing: error)
-                )
+        while let currentAction = pendingAction {
+            pendingAction = nil
+
+            let transition = try matchTransition(for: currentAction)
+
+            if let effect = transition.effect {
+                do {
+                    pendingAction = try await effect()
+                } catch let error as CancellationError {
+                    throw error
+                } catch {
+                    throw TransitionDispatchError<T>.effectFailed(
+                        transition: transition,
+                        message: String(describing: error)
+                    )
+                }
             }
-        } else {
-            followUpAction = nil
-        }
 
-        state = transition.to
-        hook?(state)
-
-        if let followUpAction {
-            try await dispatch(followUpAction)
+            state = transition.to
+            hook?(state)
         }
     }
 
