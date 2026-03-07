@@ -10,15 +10,23 @@ StateObservationKit への貢献を歓迎します。本ガイドでは、Pull R
 2. `docs/architecture.ja.md`
 3. `README.ja.md`
 4. `docs/best_practices.md`
-5. `docs/q1_execution_plan.ja.md`
+5. `docs/contributing.md`
 
 ロードマップと current implementation に差異がある場合、その差異は「直すべき移行対象」として扱います。現状追認ではなく、ロードマップに沿ってどこを更新するべきかを先に整理してください。
+
+
+## 四半期別の実行計画
+
+参照優先順位（上記）で方針を確認したあと、四半期別タスクは次の実行計画に紐付けて着手してください。
+
+- Q2 の変更: `docs/q2_execution_plan.ja.md`
+- Q1 の変更: `docs/q1_execution_plan.ja.md`
 
 ## 開発方針
 - 新しい StateMachine 型を追加する場合は、`ObservationDrivenStateMachine` または `TransitionDrivenStateMachine` を拡張し、既存の API と一貫した設計を保ってください。
 - 状態や入力を追加する際は、すべてのケースを列挙したテストを用意し、`default` ケースに依存しない遷移を保証してください。
 - `docs/architecture.md` に記載の依存方向 `View -> StateMachine -> UseCase / Domain -> Infrastructure` を満たしていることを確認してください。
-- Q1 の変更では、対象タスクを `docs/q1_execution_plan.ja.md` の Milestone / Issue に紐付けてから着手してください。
+- 対象タスクを該当四半期の実行計画（Q1/Q2）にある Milestone / Issue へ紐付けてから着手してください。
 
 ## コード品質
 - 副作用を伴う処理は UseCase で実装し、StateMachine では `dispatch(_:)` を通じた状態制御に集中してください。
@@ -34,7 +42,7 @@ StateObservationKit への貢献を歓迎します。本ガイドでは、Pull R
 
 ## Validation Standard
 
-Q1 の標準 validation は次の 2 コマンドです。通常は個別実行ではなく `./scripts/validate.sh` を使ってください。
+標準 validation は次の 2 コマンドです。通常は個別実行ではなく `./scripts/validate.sh` を使ってください。
 
 ```bash
 swift test

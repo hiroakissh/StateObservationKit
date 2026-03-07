@@ -50,6 +50,10 @@ public actor PlayerUseCase: PlayerUseCaseProtocol {
     }
 }
 
+private enum PlayerExampleEnvironmentScope {
+    @TaskLocal static var current: PlayerEnvironment?
+}
+
 private actor PlayerEnvironmentStore {
     static let shared = PlayerEnvironmentStore(environment: .live)
 
@@ -80,6 +84,23 @@ public func configurePlayerExampleEnvironment(_ environment: PlayerEnvironment) 
 
 public func resetPlayerExampleEnvironment() async {
     await PlayerEnvironmentStore.shared.reset()
+}
+
+public func withPlayerExampleEnvironment<T: Sendable>(
+    _ environment: PlayerEnvironment,
+    operation: @Sendable () async throws -> T
+) async rethrows -> T {
+    try await PlayerExampleEnvironmentScope.$current.withValue(environment) {
+        try await operation()
+    }
+}
+
+private func currentPlayerExampleEnvironment() async -> PlayerEnvironment {
+    if let environment = PlayerExampleEnvironmentScope.current {
+        return environment
+    }
+
+    return await PlayerEnvironmentStore.shared.current()
 }
 
 // MARK: - Domain States
@@ -143,25 +164,25 @@ public enum PlayerTransition: TransitionType {
         switch self {
         case .idle_play:
             {
-                let environment = await PlayerEnvironmentStore.shared.current()
+                let environment = await currentPlayerExampleEnvironment()
                 try await environment.playerUseCase.play()
                 return nil
             }
         case .playing_pause:
             {
-                let environment = await PlayerEnvironmentStore.shared.current()
+                let environment = await currentPlayerExampleEnvironment()
                 try await environment.playerUseCase.pause()
                 return nil
             }
         case .paused_resume:
             {
-                let environment = await PlayerEnvironmentStore.shared.current()
+                let environment = await currentPlayerExampleEnvironment()
                 try await environment.playerUseCase.resume()
                 return nil
             }
         case .playing_stop, .paused_stop:
             {
-                let environment = await PlayerEnvironmentStore.shared.current()
+                let environment = await currentPlayerExampleEnvironment()
                 try await environment.playerUseCase.stop()
                 return nil
             }

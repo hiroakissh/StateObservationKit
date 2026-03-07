@@ -193,6 +193,7 @@ struct PlayerView: View {
 - [ロードマップ](ROADMAP.ja.md)
 - [Architecture](docs/architecture.md)
 - [アーキテクチャ](docs/architecture.ja.md)
+- [Q2 実行計画](docs/q2_execution_plan.ja.md)
 - [English README](README.md)
 
 ## 2026 ロードマップ概要

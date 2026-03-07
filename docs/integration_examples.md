@@ -5,7 +5,8 @@ StateObservationKit を既存のアプリ基盤に組み合わせる際のヒン
 ## PlayerExample の依存分離
 - `PlayerEnvironment` が `PlayerUseCaseProtocol` を保持し、StateMachine から concrete infrastructure を直接参照しない形を取ります。
 - `PlayerUseCase` が `AudioServiceProtocol` を受け取り、`PlayerTransition` の effect は UseCase を通じて副作用を実行します。
-- サンプルやテストでは `configurePlayerExampleEnvironment(_:)` を使って依存を差し替えられるため、状態遷移の検証時に live な audio 実装へ依存しません。
+- サンプルやテストでは `withPlayerExampleEnvironment(_:_:)` を使って現在の task scope だけ依存を差し替えられるため、状態遷移の検証時に live な audio 実装へ依存しません。
+- `withPlayerExampleEnvironment(_:_:)` はネストやエラー時にも元の environment を自動復元し、並行実行のテストでも scoped override が混線しない形を取ります。
 
 ## ストップウォッチ / ポモドーロタイマー
 - `StopwatchUseCase` が経過時間の計測とポモドーロサイクルの切り替えを担当します。
