@@ -33,6 +33,8 @@ final class PlayerScreenModel {
         }
     }
 
+    // UI input enters through `send(_:)`; this method decides whether the action is valid,
+    // forwards accepted input to the machine, and then handles side-effect results.
     func send(_ action: PlayerAction) {
         guard let operation = Self.operation(
             for: state,
@@ -43,6 +45,7 @@ final class PlayerScreenModel {
         }
 
         errorMessage = nil
+        // `dispatch(_:)` remains the lower-level primitive that actually commits machine state.
         machine.dispatch(action)
 
         Task {
@@ -186,6 +189,7 @@ struct PlayerView_ObservationDriven: View {
                     .foregroundStyle(.red)
             }
 
+            // The View only sends user intent to the ScreenModel.
             switch model.state {
             case .idle:
                 Button("▶️ Play") { model.send(.play) }

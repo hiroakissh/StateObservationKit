@@ -181,6 +181,8 @@ struct PlayerView: View {
 }
 ```
 
+上のコードは最小例として View から Machine を直接扱っています。パッケージ同梱の sample では、SwiftUI からの入力はまず ScreenModel 風の `send(_:)` に集約し、その内部で必要なときだけ `dispatch(_:)` を呼ぶ形にしています。副作用、`Result` の処理、follow-up action を View に漏らしたくない場合はこの構成を推奨します。
+
 ## ドキュメント
 
 - [Roadmap](ROADMAP.md)

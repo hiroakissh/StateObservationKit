@@ -181,6 +181,8 @@ struct PlayerView: View {
 }
 ```
 
+The snippet above is the smallest possible example, so the View talks to the machine directly. In the package sample, SwiftUI input goes through a ScreenModel-style `send(_:)` method first, and that wrapper decides when to call `dispatch(_:)`. Use that shape when side effects, `Result` handling, or follow-up actions should stay out of the View.
+
 ## Documentation
 
 - [Roadmap](ROADMAP.md)

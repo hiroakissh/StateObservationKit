@@ -122,6 +122,12 @@ final class TaskScreenModel {
 - View からの入力は ScreenModel の `send(_:)` に集約し、副作用の結果は `Result` で受けて follow-up action に変換します。
 - `default` を使わず、状態ごとに受け付ける Action を明示すると、状態追加時に見落としに気付きやすくなります。
 
+### `send(_:)` と `dispatch(_:)` の役割
+
+- `dispatch(_:)` は Machine の低レベル API で、状態変更を確定するための primitive です。
+- `send(_:)` は UI / ScreenModel 側の入口で、入力の受理判定、UseCase 起動、`Result` から follow-up action への変換をまとめます。
+- SwiftUI View からは `send(_:)` を呼び、ScreenModel の内部で必要なタイミングだけ `dispatch(_:)` を使うと、View に orchestration が漏れません。
+
 ## 3. UseCase で副作用を扱う
 
 ```swift
@@ -186,6 +192,7 @@ struct TaskView: View {
 
 - `@Bindable` で ScreenModel を監視し、その内部が持つ machine の状態を `switch` で描画します。
 - ボタン操作などのユーザー入力は `TaskScreenModel.send(_:)` に集約し、View から reducer や repository へ直接触れない形を保ちます。
+- つまり View は intent を送るだけで、実際の state commit は ScreenModel 内の `dispatch(_:)` が担当します。
 
 ```swift
 let model = TaskScreenModel(useCase: .init(repository: TaskRepositoryImpl()))
