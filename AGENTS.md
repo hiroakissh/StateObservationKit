@@ -30,7 +30,8 @@
 2. Q1 の作業では `docs/q1_execution_plan.ja.md` を確認し、対象 Milestone / Issue を紐付ける。
 3. 対応する設計文書を確認し、変更対象を API / docs / sample / tests のどれかに分解する。
 4. 実装差分だけでなく、必要なドキュメントとサンプルコードの追従も同一変更で扱う。
-5. 変更後は対象に応じて `swift test` と `swift build -Xswiftc -strict-concurrency=complete` を実行する。
+5. 変更後は `./scripts/validate.sh` を標準検証入口として使うこと。
+6. docs-only change でローカルの Swift 検証を省略する場合は `./scripts/validate.sh docs-only` を使い、skip reason を PR や作業報告に明記すること。
 
 ## アーキテクチャルール
 
@@ -70,6 +71,8 @@
 - 遷移の正常系だけでなく、無効遷移、effect failure、順序保証、follow-up action、mock 差し替えも検証すること。
 - `ObservationDrivenStateMachineMock` のようなテストダブルを優先し、副作用は隔離すること。
 - `sleep` に依存するテストは暫定措置として扱い、より決定的な完了通知や await 可能 API に置き換えられないか検討すること。
+- 標準 validation は `./scripts/validate.sh` とし、その中で `swift test` と `swift build -Xswiftc -strict-concurrency=complete` を実行すること。
+- docs-only change でコンパイルを省略した場合でも、skip は例外扱いとして明示すること。
 
 ## レビュー観点
 

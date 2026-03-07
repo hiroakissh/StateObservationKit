@@ -29,8 +29,21 @@ StateObservationKit への貢献を歓迎します。本ガイドでは、Pull R
 ## Pull Request の流れ
 1. 変更内容を roadmap のどの四半期と Issue に対応づけるか明記します。
 2. 実装だけでなく、必要なドキュメントやサンプルコードを同じ変更で更新します。
-3. 最低限 `swift test` と `swift build -Xswiftc -strict-concurrency=complete` を実行します。
+3. 標準 validation として `./scripts/validate.sh` を実行します。
 4. Reviewer からのフィードバックを取り込み、依存方向、用語の一貫性、テストの網羅性を再確認してください。
+
+## Validation Standard
+
+Q1 の標準 validation は次の 2 コマンドです。通常は個別実行ではなく `./scripts/validate.sh` を使ってください。
+
+```bash
+swift test
+swift build -Xswiftc -strict-concurrency=complete
+```
+
+- コード変更、public API 変更、sample 変更、test 変更を含む場合は `./scripts/validate.sh` を実行してください。
+- docs-only change でローカルの Swift 検証を省略する場合は `./scripts/validate.sh docs-only` を使い、PR 本文や進捗報告に skip reason を明記してください。
+- CI は `.github/workflows/swift-test.yml` から同じ script を呼び出す前提で維持します。ローカルと CI で別の検証手順を増やさないようにしてください。
 
 ## Repo-local Skill
 
