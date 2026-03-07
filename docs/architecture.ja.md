@@ -17,6 +17,7 @@ Current State + Intent
 ```
 
 現在の API では、アーキテクチャ上の `Intent` は `Action` として表現されています。
+この文書では、設計概念の説明には `Intent` を使い、current public API の説明には `Action` / `ActionType` を使います。
 
 | 概念 | 現在の API | 役割 |
 | --- | --- | --- |

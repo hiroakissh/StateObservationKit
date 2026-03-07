@@ -17,6 +17,7 @@ Current State + Intent
 ```
 
 In the current API, the architectural concept of `Intent` is represented by `Action`.
+In this document, `Intent` is the architecture term, while `Action` / `ActionType` refers to the current public API surface.
 
 | Concept | Current API | Role |
 | --- | --- | --- |

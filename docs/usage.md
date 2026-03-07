@@ -1,8 +1,9 @@
 # 利用方法
 
-StateObservationKit を使って状態駆動アプリを構築するための基本的な流れを紹介します。ここではタスク管理ドメインを例に、状態とイベントの定義から View での利用までを順に説明します。
+StateObservationKit を使って状態駆動アプリを構築するための基本的な流れを紹介します。ここではタスク管理ドメインを例に、状態と入力の定義から View での利用までを順に説明します。
+このガイドでは、アーキテクチャ上の `Intent` を current public API に合わせて `Action` / `ActionType` として記述します。
 
-## 1. 状態とイベントを定義する
+## 1. 状態と Action を定義する
 
 ```swift
 enum TaskState: StateType {
@@ -13,7 +14,7 @@ enum TaskState: StateType {
     case error(String)
 }
 
-enum TaskEvent: EventType {
+enum TaskAction: ActionType {
     case startEdit
     case save(String)
     case finish
@@ -21,7 +22,7 @@ enum TaskEvent: EventType {
 }
 ```
 
-- `StateType` と `EventType` に準拠した `enum` を定義することで、遷移可能な状態とイベントを列挙します。
+- `StateType` と `ActionType` に準拠した `enum` を定義することで、遷移可能な状態と入力を列挙します。
 - エラーやコンテキスト付きの情報は、関連値を活用して表現します。
 
 ## 2. StateMachine を定義する
@@ -29,13 +30,13 @@ enum TaskEvent: EventType {
 ```swift
 @MainActor
 final class TaskStateMachine {
-    let machine: ObservationDrivenStateMachine<TaskState, TaskEvent>
+    let machine: ObservationDrivenStateMachine<TaskState, TaskAction>
     private let useCase: TaskUseCase
 
     init(useCase: TaskUseCase) {
         self.useCase = useCase
-        self.machine = ObservationDrivenStateMachine(initial: .idle) { state, event in
-            switch (state, event) {
+        self.machine = ObservationDrivenStateMachine(initial: .idle) { state, action in
+            switch (state, action) {
             case (.idle, .startEdit):
                 state = .editing
             case (.editing, .save):
@@ -48,13 +49,13 @@ final class TaskStateMachine {
         }
     }
 
-    func handle(_ event: TaskEvent) {
-        switch event {
+    func handle(_ action: TaskAction) {
+        switch action {
         case .save(let title):
             machine.dispatch(.save(title))
             Task { await useCase.saveTask(title) }
         default:
-            machine.dispatch(event)
+            machine.dispatch(action)
         }
     }
 }
@@ -87,12 +88,12 @@ final class TaskUseCase {
 - UseCase は副作用やリポジトリ操作を一手に引き受け、テストしやすい構造を保ちます。
 - 失敗時のエラー処理やリトライなどもここでカプセル化します。
 
-## 4. View で状態を監視しイベントを送出する
+## 4. View で状態を監視し Action を送出する
 
 ```swift
 struct TaskView: View {
-    @Bindable var machine: ObservationDrivenStateMachine<TaskState, TaskEvent>
-    let handle: (TaskEvent) -> Void
+    @Bindable var machine: ObservationDrivenStateMachine<TaskState, TaskAction>
+    let handle: (TaskAction) -> Void
     @State private var newTitle = ""
 
     var body: some View {
@@ -120,7 +121,7 @@ struct TaskView: View {
 ```
 
 - `@Bindable` で StateMachine を監視し、`switch` 文で全状態を描画します。
-- ボタン操作などのユーザーイベントから `TaskStateMachine.handle(_:)` を呼び出し、副作用と状態遷移を用途に応じて組み合わせます。
+- ボタン操作などのユーザー入力から `TaskStateMachine.handle(_:)` を呼び出し、副作用と状態遷移を用途に応じて組み合わせます。
 
 ```swift
 let machine = TaskStateMachine(useCase: .init(repository: TaskRepositoryImpl()))
@@ -130,6 +131,6 @@ TaskView(
 )
 ```
 
-- View には `ObservationDrivenStateMachine` を `@Bindable` で渡しつつ、イベントハンドラとして `TaskStateMachine` のメソッドを共有します。
+- View には `ObservationDrivenStateMachine` を `@Bindable` で渡しつつ、Action ハンドラとして `TaskStateMachine` のメソッドを共有します。
 
-これらの手順をベースに、ドメイン固有の状態・イベント・副作用を組み合わせることで、状態駆動なアプリケーションを段階的に構築できます。
+これらの手順をベースに、ドメイン固有の状態・入力・副作用を組み合わせることで、状態駆動なアプリケーションを段階的に構築できます。
