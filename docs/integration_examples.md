@@ -26,5 +26,6 @@ StateObservationKit を既存のアプリ基盤に組み合わせる際のヒン
 - イベントシーケンスを `dispatch` し、期待される状態遷移をアサートするテストを用意します。
 - 非同期副作用は UseCase や Repository をモック化し、期待するイベントの発火を検証します。
 - `Testing/ObservationDrivenStateMachineMock` を活用して Reducer のロジックのみを検証し、副作用を排除した純粋なテストを実現します。
+- UI / ScreenModel が machine を保持する場合は `ObservationStateMachineType` を注入境界に置き、production では real machine、preview / state assertion では mock を差し替える形にすると一貫します。
 
 これらのサンプルを参考に、ドメイン固有のユースケースを組み合わせることで、状態駆動設計のメリットを最大限引き出せます。

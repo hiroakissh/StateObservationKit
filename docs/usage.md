@@ -129,6 +129,11 @@ final class TaskScreenModel {
 - `send(_:)` は UI / ScreenModel 側の入口で、入力の受理判定、UseCase 起動、`Result` から follow-up action への変換をまとめます。
 - SwiftUI View からは `send(_:)` を呼び、ScreenModel の内部で必要なタイミングだけ `dispatch(_:)` を使うと、View に orchestration が漏れません。
 
+### protocol と mock の使い分け
+
+- ScreenModel が machine を保持する場合、`ObservationStateMachineType` を満たす型を init 境界で受けると、production では `ObservationDrivenStateMachine`、tests / previews では `ObservationDrivenStateMachineMock` を同じ構造で差し替えられます。
+- `ObservationDrivenStateMachineMock` は `dispatch(_:)` / `send(_:)` の API 形状を合わせた同期 test double です。状態確認や preview には向きますが、queue の順序保証そのものを証明する用途には real machine を使ってください。
+
 ## 3. UseCase で副作用を扱う
 
 ```swift

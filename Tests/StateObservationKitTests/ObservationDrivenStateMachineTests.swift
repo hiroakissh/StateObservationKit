@@ -65,8 +65,49 @@ final class ObservationDrivenStateMachineTests: XCTestCase {
         XCTAssertEqual(committedState, ["first", "second"])
         XCTAssertEqual(machine.state, ["first", "second"])
     }
+
+#if canImport(SwiftUI) && canImport(Observation)
+    @MainActor
+    func testPlayerScreenModelCanUseMockThroughProtocolBoundary() {
+        let machine = ObservationDrivenStateMachineMock<PlayerState, PlayerAction>(
+            initial: .idle
+        ) { state, action in
+            switch (state, action) {
+            case (.idle, .play):
+                state = .playing
+            case (.playing, .pause):
+                state = .paused
+            case (.paused, .resume):
+                state = .playing
+            case (.playing, .stop), (.paused, .stop):
+                state = .stopped
+            default:
+                break
+            }
+        }
+
+        let model = PlayerScreenModel(
+            machine: machine,
+            playerUseCase: NoOpPlayerUseCase()
+        )
+
+        model.send(.play)
+
+        XCTAssertEqual(model.state, .playing)
+        XCTAssertEqual(machine.receivedActions, [.play])
+    }
+#endif
 }
 
 private enum SampleAsyncResultError: Error {
     case example
 }
+
+#if canImport(SwiftUI) && canImport(Observation)
+private actor NoOpPlayerUseCase: PlayerUseCaseProtocol {
+    func play() async throws {}
+    func pause() async throws {}
+    func resume() async throws {}
+    func stop() async throws {}
+}
+#endif

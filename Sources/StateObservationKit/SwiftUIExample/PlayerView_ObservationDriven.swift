@@ -6,14 +6,33 @@ import Observation
 @MainActor
 final class PlayerScreenModel {
     @ObservationIgnored
-    private let machine: ObservationDrivenStateMachine<PlayerState, PlayerAction>
+    private let stateProvider: @MainActor () -> PlayerState
+    @ObservationIgnored
+    private let dispatchAction: @MainActor (PlayerAction) -> Void
     @ObservationIgnored
     private let playerUseCase: any PlayerUseCaseProtocol
     var errorMessage: String?
 
-    init(environment: PlayerEnvironment = .live) {
-        self.playerUseCase = environment.playerUseCase
-        self.machine = ObservationDrivenStateMachine<PlayerState, PlayerAction>(
+    init<Machine: ObservationStateMachineType>(
+        machine: Machine,
+        playerUseCase: any PlayerUseCaseProtocol
+    ) where Machine.State == PlayerState, Machine.Action == PlayerAction {
+        self.stateProvider = { machine.state }
+        self.dispatchAction = { action in
+            machine.dispatch(action)
+        }
+        self.playerUseCase = playerUseCase
+    }
+
+    convenience init(environment: PlayerEnvironment = .live) {
+        self.init(
+            machine: Self.makeMachine(),
+            playerUseCase: environment.playerUseCase
+        )
+    }
+
+    private static func makeMachine() -> ObservationDrivenStateMachine<PlayerState, PlayerAction> {
+        ObservationDrivenStateMachine<PlayerState, PlayerAction>(
             initial: .idle
         ) { state, action in
             Self.reduce(state: &state, action: action)
@@ -21,7 +40,7 @@ final class PlayerScreenModel {
     }
 
     var state: PlayerState {
-        machine.state
+        stateProvider()
     }
 
     var stateLabel: String {
@@ -46,7 +65,7 @@ final class PlayerScreenModel {
 
         errorMessage = nil
         // `dispatch(_:)` remains the lower-level primitive that actually commits machine state.
-        machine.dispatch(action)
+        dispatchAction(action)
 
         Task {
             let result = await operation()
@@ -172,8 +191,12 @@ final class PlayerScreenModel {
 struct PlayerView_ObservationDriven: View {
     @State private var model: PlayerScreenModel
 
+    init(model: PlayerScreenModel) {
+        _model = State(initialValue: model)
+    }
+
     init(environment: PlayerEnvironment = .live) {
-        _model = State(initialValue: PlayerScreenModel(environment: environment))
+        self.init(model: PlayerScreenModel(environment: environment))
     }
 
     var body: some View {

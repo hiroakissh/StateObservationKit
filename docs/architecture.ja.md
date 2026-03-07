@@ -120,6 +120,10 @@ SwiftUI View
 
 `ObservationStateMachineType` と `ObservationDrivenStateMachineMock` を使うことで、UI やアプリケーションコードは具体的な実行時挙動ではなく抽象に依存できます。
 
+- ScreenModel や application layer の wrapper は、注入境界で `Machine: ObservationStateMachineType` を受け、具象 `ObservationDrivenStateMachine` の生成は edge に寄せます。
+- `ObservationDrivenStateMachineMock` は `dispatch(_:)` / `send(_:)` の表面 API を揃えつつ、Reducer を同期実行して決定的な state assertion を可能にします。
+- Reducer queue の順序保証や completion semantics を検証したい場合は実機の `ObservationDrivenStateMachine` を使い、preview・Reducer 単体テスト・orchestration テストでは mock を使います。
+
 ## SwiftUI エルゴノミクス
 
 StateObservationKit は、プラットフォームが許す範囲で SwiftUI-first を意識しています。
