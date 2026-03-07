@@ -2,29 +2,38 @@
 import SwiftUI
 import Observation
 
+@MainActor
 struct PlayerView_ObservationDriven: View {
-    @Bindable var machine = ObservationDrivenStateMachine<PlayerState, PlayerAction>(
-        initial: .idle
-    ) { state, action in
-        switch (state, action) {
-        case (.idle, .play):
-            try? await AudioService.shared.play()
-            state = .playing
-        case (.playing, .pause):
-            try? await AudioService.shared.pause()
-            state = .paused
-        case (.paused, .resume):
-            try? await AudioService.shared.resume()
-            state = .playing
-        case (.playing, .stop), (.paused, .stop):
-            try? await AudioService.shared.stop()
-            state = .stopped
-        default:
-            break
-        }
+    @State private var machine: ObservationDrivenStateMachine<PlayerState, PlayerAction>
+
+    init() {
+        _machine = State(
+            initialValue: ObservationDrivenStateMachine<PlayerState, PlayerAction>(
+                initial: .idle
+            ) { state, action in
+                switch (state, action) {
+                case (.idle, .play):
+                    try? await AudioService.shared.play()
+                    state = .playing
+                case (.playing, .pause):
+                    try? await AudioService.shared.pause()
+                    state = .paused
+                case (.paused, .resume):
+                    try? await AudioService.shared.resume()
+                    state = .playing
+                case (.playing, .stop), (.paused, .stop):
+                    try? await AudioService.shared.stop()
+                    state = .stopped
+                default:
+                    break
+                }
+            }
+        )
     }
 
     var body: some View {
+        @Bindable var machine = machine
+
         VStack(spacing: 20) {
             Text("🎧 State: \(machine.stateLabel)")
                 .font(.headline)

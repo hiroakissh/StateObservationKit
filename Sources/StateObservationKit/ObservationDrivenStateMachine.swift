@@ -6,31 +6,33 @@ import Observation
 #if canImport(Observation)
 @Observable
 #endif
-public final class ObservationDrivenStateMachine<State: Equatable, Action>: ObservationStateMachineType {
+@MainActor
+public final class ObservationDrivenStateMachine<State: Equatable & Sendable, Action: Sendable>: ObservationStateMachineType {
     public private(set) var state: State
 #if canImport(Observation)
     @ObservationIgnored
 #endif
     private let reducerExecutor: ReducerExecutor<State, Action>
 
-    public init(initial: State, reducer: @escaping (inout State, Action) async -> Void) {
+    public init(initial: State, reducer: @escaping @Sendable (inout State, Action) async -> Void) {
         self.state = initial
         self.reducerExecutor = ReducerExecutor(initial: initial, reducer: reducer)
     }
 
     public func dispatch(_ action: Action) {
+        let reducerExecutor = self.reducerExecutor
         Task {
             let newState = await reducerExecutor.run(action: action)
-            await MainActor.run { self.state = newState }
+            self.state = newState
         }
     }
 }
 
-private actor ReducerExecutor<State, Action> {
+private actor ReducerExecutor<State: Sendable, Action: Sendable> {
     private var state: State
-    private let reducer: (inout State, Action) async -> Void
+    private let reducer: @Sendable (inout State, Action) async -> Void
 
-    init(initial: State, reducer: @escaping (inout State, Action) async -> Void) {
+    init(initial: State, reducer: @escaping @Sendable (inout State, Action) async -> Void) {
         self.state = initial
         self.reducer = reducer
     }

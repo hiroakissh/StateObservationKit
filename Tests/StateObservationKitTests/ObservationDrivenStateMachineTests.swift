@@ -2,6 +2,7 @@ import XCTest
 @testable import StateObservationKit
 
 final class ObservationDrivenStateMachineTests: XCTestCase {
+    @MainActor
     func testReducerFlow() async throws {
         let machine = ObservationDrivenStateMachine(initial: "idle") { state, action in
             if action == "start" { state = "running" }
@@ -13,6 +14,7 @@ final class ObservationDrivenStateMachineTests: XCTestCase {
         XCTAssertEqual(machine.state, "running")
     }
 
+    @MainActor
     func testMockRecordsActionsAndState() {
         let mock = ObservationDrivenStateMachineMock(initial: "idle") { state, action in
             if action == "start" { state = "running" }

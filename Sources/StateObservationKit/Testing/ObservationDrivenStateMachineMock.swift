@@ -6,7 +6,8 @@ import Observation
 #if canImport(Observation)
 @Observable
 #endif
-public final class ObservationDrivenStateMachineMock<State: Equatable, Action>: ObservationStateMachineType {
+@MainActor
+public final class ObservationDrivenStateMachineMock<State: Equatable & Sendable, Action: Sendable>: ObservationStateMachineType {
     public private(set) var state: State
     public private(set) var receivedActions: [Action] = []
     private let reducer: ((inout State, Action) -> Void)?
