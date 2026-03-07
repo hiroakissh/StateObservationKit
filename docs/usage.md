@@ -92,26 +92,34 @@ final class TaskScreenModel {
         case .save(let title):
             machine.dispatch(.save(title))
             Task {
-                do {
+                let result = await Result<Void, Error>.catching {
                     try await useCase.saveTask(title)
-                    await MainActor.run {
-                        machine.dispatch(.finish)
-                    }
-                } catch {
-                    await MainActor.run {
-                        machine.dispatch(.fail(error.localizedDescription))
-                    }
+                }
+
+                await MainActor.run {
+                    machine.dispatch(Self.followUpAction(for: result))
                 }
             }
         case .finish, .fail:
             break
         }
     }
+
+    nonisolated private static func followUpAction(
+        for result: Result<Void, Error>
+    ) -> TaskAction {
+        switch result {
+        case .success:
+            return .finish
+        case .failure(let error):
+            return .fail(error.localizedDescription)
+        }
+    }
 }
 ```
 
 - `ObservationDrivenStateMachine` には pure reducer を渡し、状態遷移だけを閉じ込めます。
-- View からの入力は ScreenModel の `send(_:)` に集約し、副作用や follow-up action の送出は UseCase と組み合わせて扱います。
+- View からの入力は ScreenModel の `send(_:)` に集約し、副作用の結果は `Result` で受けて follow-up action に変換します。
 - `default` を使わず、状態ごとに受け付ける Action を明示すると、状態追加時に見落としに気付きやすくなります。
 
 ## 3. UseCase で副作用を扱う
@@ -131,7 +139,7 @@ actor TaskUseCase {
 ```
 
 - UseCase は副作用やリポジトリ操作を一手に引き受け、テストしやすい構造を保ちます。
-- 失敗時のエラー処理や follow-up action の判断は ScreenModel 側で行い、Reducer には副作用を持ち込まないようにします。
+- 失敗時のエラー処理や follow-up action の判断は ScreenModel 側で `Result` を使って行い、Reducer には副作用を持ち込まないようにします。
 
 ## 4. View で状態を監視し Action を送出する
 

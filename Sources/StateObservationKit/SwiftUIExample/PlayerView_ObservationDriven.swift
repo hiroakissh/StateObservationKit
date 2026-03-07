@@ -9,6 +9,7 @@ final class PlayerScreenModel {
     private let machine: ObservationDrivenStateMachine<PlayerState, PlayerAction>
     @ObservationIgnored
     private let playerUseCase: any PlayerUseCaseProtocol
+    var errorMessage: String?
 
     init(environment: PlayerEnvironment = .live) {
         self.playerUseCase = environment.playerUseCase
@@ -41,10 +42,14 @@ final class PlayerScreenModel {
             return
         }
 
+        errorMessage = nil
         machine.dispatch(action)
 
         Task {
-            try? await operation()
+            let result = await operation()
+            await MainActor.run {
+                self.consume(result)
+            }
         }
     }
 
@@ -89,40 +94,73 @@ final class PlayerScreenModel {
         for state: PlayerState,
         action: PlayerAction,
         playerUseCase: any PlayerUseCaseProtocol
-    ) -> (@Sendable () async throws -> Void)? {
+    ) -> (@Sendable () async -> Result<Void, Error>)? {
         switch state {
         case .idle:
             switch action {
             case .play:
-                return { try await playerUseCase.play() }
+                return {
+                    await Result<Void, Error>.catching {
+                        try await playerUseCase.play()
+                    }
+                }
             case .pause, .resume, .stop:
                 return nil
             }
         case .playing:
             switch action {
             case .pause:
-                return { try await playerUseCase.pause() }
+                return {
+                    await Result<Void, Error>.catching {
+                        try await playerUseCase.pause()
+                    }
+                }
             case .stop:
-                return { try await playerUseCase.stop() }
+                return {
+                    await Result<Void, Error>.catching {
+                        try await playerUseCase.stop()
+                    }
+                }
             case .play, .resume:
                 return nil
             }
         case .paused:
             switch action {
             case .resume:
-                return { try await playerUseCase.resume() }
+                return {
+                    await Result<Void, Error>.catching {
+                        try await playerUseCase.resume()
+                    }
+                }
             case .stop:
-                return { try await playerUseCase.stop() }
+                return {
+                    await Result<Void, Error>.catching {
+                        try await playerUseCase.stop()
+                    }
+                }
             case .play, .pause:
                 return nil
             }
         case .stopped:
             switch action {
             case .play:
-                return { try await playerUseCase.play() }
+                return {
+                    await Result<Void, Error>.catching {
+                        try await playerUseCase.play()
+                    }
+                }
             case .pause, .resume, .stop:
                 return nil
             }
+        }
+    }
+
+    private func consume(_ result: Result<Void, Error>) {
+        switch result {
+        case .success:
+            errorMessage = nil
+        case .failure(let error):
+            errorMessage = error.localizedDescription
         }
     }
 }
@@ -141,6 +179,12 @@ struct PlayerView_ObservationDriven: View {
         VStack(spacing: 20) {
             Text("🎧 State: \(model.stateLabel)")
                 .font(.headline)
+
+            if let errorMessage = model.errorMessage {
+                Text("⚠️ \(errorMessage)")
+                    .font(.footnote)
+                    .foregroundStyle(.red)
+            }
 
             switch model.state {
             case .idle:
