@@ -57,16 +57,28 @@ public enum PlayerTransition: TransitionType {
         }
     }
 
-    public var effect: (@Sendable () async throws -> Void)? {
+    public var effect: (@Sendable () async throws -> Action?)? {
         switch self {
         case .idle_play:
-            { try await AudioService.shared.play() }
+            {
+                try await AudioService.shared.play()
+                return nil
+            }
         case .playing_pause:
-            { try await AudioService.shared.pause() }
+            {
+                try await AudioService.shared.pause()
+                return nil
+            }
         case .paused_resume:
-            { try await AudioService.shared.resume() }
+            {
+                try await AudioService.shared.resume()
+                return nil
+            }
         case .playing_stop, .paused_stop:
-            { try await AudioService.shared.stop() }
+            {
+                try await AudioService.shared.stop()
+                return nil
+            }
         }
     }
 }

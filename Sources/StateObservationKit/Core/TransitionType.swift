@@ -5,5 +5,5 @@ public protocol TransitionType: Equatable, Sendable, CaseIterable {
     var from: State { get }
     var action: Action { get }
     var to: State { get }
-    var effect: (@Sendable () async throws -> Void)? { get }
+    var effect: (@Sendable () async throws -> Action?)? { get }
 }

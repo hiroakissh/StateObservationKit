@@ -16,6 +16,8 @@ StateObservationKit は、Swift Concurrency と SwiftUI Observation を軸にし
 - **Observation との親和性**: `@Observable` を条件付きで適用し、対応環境では SwiftUI の `@Bindable` とシームレスに連携します。
 - **逐次実行される Reducer**: `ObservationDrivenStateMachine` は内部アクターでアクションを直列処理し、期待どおりの順序で状態を書き戻します。
 - **テスト容易性**: 共通プロトコル `ObservationStateMachineType` とモック実装により、副作用を伴う処理を切り離してユニットテストが行えます。
+- **型付き失敗制御**: `TransitionDrivenStateMachine` は無効遷移と Effect 失敗を `TransitionDispatchError` として返せます。
+- **明示的な follow-up 遷移**: Effect は `Action?` を返せるため、結果を後続 Action として宣言的に連鎖できます。
 - **実装サンプル**: Player ドメインを用いた SwiftUI 例で、実際の UI 連携と非同期副作用の扱い方を学べます。
 
 ## TransitionDrivenStateMachine の使い方
@@ -24,39 +26,109 @@ StateObservationKit は、Swift Concurrency と SwiftUI Observation を軸にし
 
 ```swift
 enum PlayerTransition: TransitionType {
-    case play
-    case pause
+    typealias State = PlayerState
+    typealias Action = PlayerAction
+
+    case idlePlay
+    case playingPause
 
     var from: PlayerState {
         switch self {
-        case .play: return .idle
-        case .pause: return .playing
+        case .idlePlay: return .idle
+        case .playingPause: return .playing
+        }
+    }
+
+    var action: PlayerAction {
+        switch self {
+        case .idlePlay: return .play
+        case .playingPause: return .pause
         }
     }
 
     var to: PlayerState {
         switch self {
-        case .play: return .playing
-        case .pause: return .paused
+        case .idlePlay: return .playing
+        case .playingPause: return .paused
         }
     }
 
-    func effect() async throws {
+    var effect: (@Sendable () async throws -> PlayerAction?)? {
         switch self {
-        case .play: try await AudioService.shared.play()
-        case .pause: try await AudioService.shared.pause()
+        case .idlePlay:
+            {
+                try await AudioService.shared.play()
+                return nil
+            }
+        case .playingPause:
+            {
+                try await AudioService.shared.pause()
+                return nil
+            }
         }
     }
 }
 
-let transitionMachine = TransitionDrivenStateMachine<PlayerTransition>(
+let machine = TransitionDrivenStateMachine<PlayerTransition>(
     initial: .idle,
-    hook: { transition in
-        print("🚦", transition)
+    hook: { state in
+        print("🎯 State →", state)
     }
-)
+) 
 
-await transitionMachine.dispatch(.play)
+do {
+    try await machine.dispatch(.play)
+    print(await machine.state)
+} catch let error as TransitionDispatchError<PlayerTransition> {
+    switch error {
+    case let .invalidTransition(state, action):
+        print("Invalid transition:", state, action)
+    case let .effectFailed(transition, message):
+        print("Effect failed:", transition, message)
+    }
+}
+```
+
+`dispatch(_:)` は `async throws` で、成功時だけ状態が進みます。`effect` が `Action?` を返した場合は、現在の遷移確定後に follow-up Action を再 dispatch します。
+
+```swift
+enum BootTransition: TransitionType {
+    typealias State = BootState
+    typealias Action = BootAction
+
+    case idleStart
+    case loadingFinish
+
+    var from: BootState {
+        switch self {
+        case .idleStart: return .idle
+        case .loadingFinish: return .loading
+        }
+    }
+
+    var action: BootAction {
+        switch self {
+        case .idleStart: return .start
+        case .loadingFinish: return .finish
+        }
+    }
+
+    var to: BootState {
+        switch self {
+        case .idleStart: return .loading
+        case .loadingFinish: return .ready
+        }
+    }
+
+    var effect: (@Sendable () async throws -> BootAction?)? {
+        switch self {
+        case .idleStart:
+            { .finish }
+        case .loadingFinish:
+            nil
+        }
+    }
+}
 ```
 
 状態と副作用を 1 つの型に集約できるため、ドメイン層でのユースケース実装や監査ログの取得が簡単に行えます。
@@ -139,7 +211,7 @@ XCTAssertEqual(mockMachine.receivedActions, [.play])
 Sources/
  └─ StateObservationKit/
     ├─ Core/
-    │   ├─ StateType.swift / ActionType.swift / TransitionType.swift
+    │   ├─ StateType.swift / ActionType.swift / TransitionType.swift / TransitionDispatchError.swift
     │   └─ ObservationStateMachineType.swift
     ├─ TransitionDrivenStateMachine.swift
     ├─ ObservationDrivenStateMachine.swift
@@ -159,21 +231,26 @@ Tests/
 1. 依存関係を解決できる環境で次のコマンドを実行します。
    ```bash
    swift test
+   swift build -Xswiftc -strict-concurrency=complete
    ```
 2. Observation が利用できるプラットフォームでは、SwiftUI 連携サンプルのビルドも同時に検証されます。
 3. ログ例:
    ```text
    🎯 State → idle
    ▶️ Playing...
+   🎯 State → playing
    ⏸ Paused.
+   🎯 State → paused
    ▶️ Resumed.
+   🎯 State → playing
    🛑 Stopped.
+   🎯 State → stopped
    ```
 
 ## リリース手順
 
 1. すべてのテストが成功していることを確認します。
-2. バージョンを更新する場合は `git tag 0.1.0` のようにタグを作成します。
+2. この変更は `TransitionDrivenStateMachine` に破壊的変更を含むため、次のリリースタグは `0.2.0` 以降を前提にしてください。
 3. リモートへ公開する場合は `git push origin main --tags` を実行してください。
 
 ## ライセンス
