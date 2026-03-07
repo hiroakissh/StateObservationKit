@@ -82,6 +82,22 @@ public func resetPlayerExampleEnvironment() async {
     await PlayerEnvironmentStore.shared.reset()
 }
 
+public func withPlayerExampleEnvironment<T: Sendable>(
+    _ environment: PlayerEnvironment,
+    operation: @Sendable () async throws -> T
+) async rethrows -> T {
+    let previous = await PlayerEnvironmentStore.shared.replace(with: environment)
+
+    do {
+        let result = try await operation()
+        _ = await PlayerEnvironmentStore.shared.replace(with: previous)
+        return result
+    } catch {
+        _ = await PlayerEnvironmentStore.shared.replace(with: previous)
+        throw error
+    }
+}
+
 // MARK: - Domain States
 
 public enum PlayerState: StateType {

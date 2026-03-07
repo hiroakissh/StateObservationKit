@@ -135,21 +135,40 @@ final class TransitionDrivenStateMachineTests: XCTestCase {
 
     func testPlayerExampleCanSwapUseCaseDependency() async throws {
         let useCase = RecordingPlayerUseCase()
-        await configurePlayerExampleEnvironment(.init(playerUseCase: useCase))
 
-        do {
+        try await withPlayerExampleEnvironment(.init(playerUseCase: useCase)) {
             let machine = TransitionDrivenStateMachine<PlayerTransition>(initial: .idle)
             try await machine.dispatch(.play)
             try await machine.dispatch(.pause)
-        } catch {
-            await resetPlayerExampleEnvironment()
-            throw error
         }
-
-        await resetPlayerExampleEnvironment()
 
         let calls = await useCase.calls
         XCTAssertEqual(calls, [.play, .pause])
+    }
+
+    func testWithPlayerExampleEnvironmentRestoresPreviousEnvironmentOnError() async {
+        let overriddenUseCase = RecordingPlayerUseCase()
+
+        do {
+            try await withPlayerExampleEnvironment(.init(playerUseCase: overriddenUseCase)) {
+                throw TestFailure.sample
+            }
+            XCTFail("Expected sample failure")
+        } catch TestFailure.sample {
+            // Expected path.
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+
+        let machine = TransitionDrivenStateMachine<PlayerTransition>(initial: .idle)
+        do {
+            try await machine.dispatch(.play)
+        } catch {
+            XCTFail("Expected live environment to be restored, but got error: \(error)")
+        }
+
+        let calls = await overriddenUseCase.calls
+        XCTAssertEqual(calls, [])
     }
 }
 
