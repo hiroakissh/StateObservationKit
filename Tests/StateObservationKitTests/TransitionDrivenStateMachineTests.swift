@@ -132,6 +132,25 @@ final class TransitionDrivenStateMachineTests: XCTestCase {
         XCTAssertEqual(finalState, .loading)
         XCTAssertEqual(recorder.snapshot, [.idle, .loading])
     }
+
+    func testPlayerExampleCanSwapUseCaseDependency() async throws {
+        let useCase = RecordingPlayerUseCase()
+        await configurePlayerExampleEnvironment(.init(playerUseCase: useCase))
+
+        do {
+            let machine = TransitionDrivenStateMachine<PlayerTransition>(initial: .idle)
+            try await machine.dispatch(.play)
+            try await machine.dispatch(.pause)
+        } catch {
+            await resetPlayerExampleEnvironment()
+            throw error
+        }
+
+        await resetPlayerExampleEnvironment()
+
+        let calls = await useCase.calls
+        XCTAssertEqual(calls, [.play, .pause])
+    }
 }
 
 private final class StateRecorder<State: Sendable>: @unchecked Sendable {
@@ -305,4 +324,31 @@ private enum FollowUpFailureTransition: TransitionType {
 
 private enum TestFailure: Error {
     case sample
+}
+
+private actor RecordingPlayerUseCase: PlayerUseCaseProtocol {
+    private(set) var calls: [PlayerCall] = []
+
+    func play() async throws {
+        calls.append(.play)
+    }
+
+    func pause() async throws {
+        calls.append(.pause)
+    }
+
+    func resume() async throws {
+        calls.append(.resume)
+    }
+
+    func stop() async throws {
+        calls.append(.stop)
+    }
+}
+
+private enum PlayerCall: Equatable {
+    case play
+    case pause
+    case resume
+    case stop
 }
