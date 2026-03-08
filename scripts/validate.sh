@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
 set -euo pipefail
 
@@ -6,11 +6,7 @@ mode="${1:-full}"
 
 case "$mode" in
   full)
-    echo "[validate] swift test"
-    swift test
-
-    echo "[validate] swift build -Xswiftc -strict-concurrency=complete"
-    swift build -Xswiftc -strict-concurrency=complete
+    "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/test_spm.sh"
     ;;
   docs-only)
     echo "[validate] docs-only mode: skipping swift validation commands"

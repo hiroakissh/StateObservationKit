@@ -1,0 +1,16 @@
+{
+    "version": 1,
+    "indentConditionalCompilationBlocks": false,
+    "indentation": {
+        "spaces": 4
+    },
+    "lineLength": 160,
+    "multiElementCollectionTrailingCommas": false,
+    "rules": {
+        "AlwaysUseLowerCamelCase": false,
+        "NoAccessLevelOnExtensionDeclaration": false,
+        "OnlyOneTrailingClosureArgument": false,
+        "OrderedImports": false,
+        "UseLetInEveryBoundCaseVariable": false
+    }
+}
