@@ -1,0 +1,33 @@
+name: Format
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  swift-format:
+    name: swift-format
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check changed Swift files on pull requests
+        if: github.event_name == 'pull_request'
+        run: make format-check-changed BASE_REF="${{ github.event.pull_request.base.sha }}" HEAD_REF="${{ github.event.pull_request.head.sha }}"
+
+      - name: Check changed Swift files on pushes
+        if: github.event_name == 'push'
+        run: make format-check-changed BASE_REF="${{ github.event.before }}" HEAD_REF="${{ github.sha }}"

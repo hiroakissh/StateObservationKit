@@ -51,7 +51,9 @@ swift build -Xswiftc -strict-concurrency=complete
 
 - コード変更、public API 変更、sample 変更、test 変更を含む場合は `./scripts/validate.sh` を実行してください。
 - docs-only change でローカルの Swift 検証を省略する場合は `./scripts/validate.sh docs-only` を使い、PR 本文や進捗報告に skip reason を明記してください。
-- CI は `.github/workflows/swift-test.yml` から同じ script を呼び出す前提で維持します。ローカルと CI で別の検証手順を増やさないようにしてください。
+- macOS hosted runner 上の追加検証として、必要に応じて `make test-xcode` または `make ci` を使ってください。
+- format は `swift-format` を採用し、ローカルでは `make format` / `make format-check` を入口にします。
+- CI は `.github/workflows/ci.yml` と `.github/workflows/format.yml` から `Makefile` / `scripts/` の入口を呼び出します。ローカルと CI で別の検証手順を増やさないようにしてください。
 
 ## Repo-local Skill
 
