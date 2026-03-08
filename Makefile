@@ -5,7 +5,7 @@ XCODE_SCHEME ?= StateObservationKit
 XCODE_DESTINATION_ARCH ?= $(shell uname -m)
 XCODE_DESTINATION ?= platform=macOS,arch=$(XCODE_DESTINATION_ARCH)
 
-.PHONY: ci test-spm test-xcode format format-check format-check-changed build-examples docs
+.PHONY: ci test-spm test-xcode test-release-governance format format-check format-check-changed build-examples docs
 
 test-spm:
 	./scripts/test_spm.sh
@@ -13,6 +13,9 @@ test-spm:
 test-xcode:
 	xcodebuild -scheme "$(XCODE_SCHEME)" -destination "$(XCODE_DESTINATION)" build
 	xcodebuild -scheme "$(XCODE_SCHEME)" -destination "$(XCODE_DESTINATION)" test
+
+test-release-governance:
+	./scripts/test_release_version.sh
 
 format:
 	./scripts/format.sh format

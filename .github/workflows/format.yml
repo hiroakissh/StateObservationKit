@@ -3,8 +3,13 @@ name: Format
 on:
   push:
     branches:
-      - main
+      - develop
+      - feature/release-*
   pull_request:
+    branches:
+      - develop
+      - main
+      - feature/release-*
   workflow_dispatch:
 
 permissions:

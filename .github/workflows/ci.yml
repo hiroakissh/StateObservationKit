@@ -3,8 +3,13 @@ name: CI
 on:
   push:
     branches:
-      - main
+      - develop
+      - feature/release-*
   pull_request:
+    branches:
+      - develop
+      - main
+      - feature/release-*
   workflow_dispatch:
 
 permissions:
@@ -15,6 +20,67 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  release-governance:
+    name: Release Governance
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect release branch context
+        id: release-context
+        shell: bash
+        run: |
+          head_ref="${{ github.head_ref }}"
+          base_ref="${{ github.base_ref }}"
+          ref_name="${{ github.ref_name }}"
+
+          if [[ -n "$head_ref" ]] && ./scripts/release_version.sh is-release-branch "$head_ref" >/dev/null 2>&1; then
+            echo "head_release=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "head_release=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          if [[ -n "$base_ref" ]] && ./scripts/release_version.sh is-release-branch "$base_ref" >/dev/null 2>&1; then
+            echo "base_release=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "base_release=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          if [[ -n "$ref_name" ]] && ./scripts/release_version.sh is-release-branch "$ref_name" >/dev/null 2>&1; then
+            echo "push_release=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "push_release=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Validate VERSION metadata
+        run: ./scripts/release_version.sh validate
+
+      - name: Require develop as the main release source
+        if: github.event_name == 'pull_request' && github.base_ref == 'main'
+        run: |
+          if [[ "${{ github.head_ref }}" != "develop" ]]; then
+            echo "::error::Pull requests into main must come from develop."
+            exit 1
+          fi
+
+      - name: Validate release branch version alignment
+        if: github.event_name == 'pull_request' && steps.release-context.outputs.head_release == 'true'
+        run: ./scripts/release_version.sh match-branch "${{ github.head_ref }}"
+
+      - name: Validate target release branch version alignment before merge
+        if: github.event_name == 'pull_request' && steps.release-context.outputs.base_release == 'true'
+        run: ./scripts/release_version.sh match-branch "${{ github.base_ref }}"
+
+      - name: Validate release branch version alignment on push
+        if: github.event_name == 'push' && steps.release-context.outputs.push_release == 'true'
+        run: ./scripts/release_version.sh match-branch "${{ github.ref_name }}"
+
+      - name: Run release governance script tests
+        run: make test-release-governance
+
   swiftpm:
     name: SwiftPM Build and Test
     runs-on: macos-latest

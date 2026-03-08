@@ -1,6 +1,6 @@
 # StateObservationKit
 
-[日本語](README.ja.md) | [Roadmap](ROADMAP.md) | [ロードマップ](ROADMAP.ja.md) | [Architecture](docs/architecture.md) | [アーキテクチャ](docs/architecture.ja.md)
+[日本語](README.ja.md) | [Roadmap](ROADMAP.md) | [ロードマップ](ROADMAP.ja.md) | [Architecture](docs/architecture.md) | [アーキテクチャ](docs/architecture.ja.md) | [Release Workflow](docs/release_workflow.md) | [リリース運用](docs/release_workflow.ja.md)
 
 > **Make architecture executable.**
 

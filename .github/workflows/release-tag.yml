@@ -1,0 +1,121 @@
+name: Release Tag
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  create-release-tag:
+    name: Create Release Tag
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate VERSION metadata
+        run: ./scripts/release_version.sh validate
+
+      - name: Require a merged pull request into main
+        id: associated-pr
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const result = await github.graphql(
+              `query($owner: String!, $repo: String!, $oid: GitObjectID!) {
+                repository(owner: $owner, name: $repo) {
+                  object(oid: $oid) {
+                    ... on Commit {
+                      associatedPullRequests(first: 10) {
+                        nodes {
+                          number
+                          mergedAt
+                          baseRefName
+                          headRefName
+                        }
+                      }
+                    }
+                  }
+                }
+              }`,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                oid: context.sha,
+              }
+            );
+
+            const prs = result.repository.object?.associatedPullRequests?.nodes ?? [];
+            const mergedMainPr = prs.find((pr) => pr.mergedAt && pr.baseRefName === "main");
+
+            if (!mergedMainPr) {
+              core.setFailed(
+                `No merged pull request into main is associated with ${context.sha}. Refusing to create a release tag from a direct push.`
+              );
+              return;
+            }
+
+            core.info(
+              `Release tag creation is allowed for PR #${mergedMainPr.number} from ${mergedMainPr.headRefName}.`
+            );
+
+      - name: Determine release version delta
+        id: version
+        shell: bash
+        run: |
+          current_version="$(./scripts/release_version.sh get)"
+          previous_version="$(./scripts/release_version.sh get-from-ref "${{ github.event.before }}" 2>/dev/null || true)"
+
+          echo "current=$current_version" >> "$GITHUB_OUTPUT"
+
+          if [[ -z "$previous_version" ]]; then
+            if git rev-parse -q --verify "refs/tags/$current_version" >/dev/null; then
+              echo "changed=false" >> "$GITHUB_OUTPUT"
+              echo "reason=bootstrap-already-tagged" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "reason=bootstrap-new-version" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "previous=$previous_version" >> "$GITHUB_OUTPUT"
+
+          if [[ "$current_version" == "$previous_version" ]]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "reason=unchanged" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          echo "reason=version-bumped" >> "$GITHUB_OUTPUT"
+
+      - name: Skip when VERSION is unchanged on main
+        if: steps.version.outputs.changed != 'true'
+        run: echo "Skipping release tag creation: ${{ steps.version.outputs.reason }}"
+
+      - name: Create annotated tag
+        if: steps.version.outputs.changed == 'true'
+        shell: bash
+        run: |
+          version="${{ steps.version.outputs.current }}"
+
+          if git rev-parse -q --verify "refs/tags/$version" >/dev/null; then
+            echo "::error::Tag $version already exists. Bump VERSION before merging into main."
+            exit 1
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$version" -m "Release $version"
+          git push origin "refs/tags/$version"
