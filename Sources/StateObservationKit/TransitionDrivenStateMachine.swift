@@ -4,11 +4,18 @@ import Foundation
 /// State is committed only through `dispatch(_:)`, after the matched transition's effect succeeds.
 public actor TransitionDrivenStateMachine<T: TransitionType>: Sendable {
     public private(set) var state: T.State
-    private let hook: (@Sendable (T.State) -> Void)?
+    private let stateHook: (@Sendable (T.State) -> Void)?
+    private let transitionRecorder: TransitionRecorder<T>?
 
-    public init(initial: T.State, hook: (@Sendable (T.State) -> Void)? = nil) {
+    public init(
+        initial: T.State,
+        hook: (@Sendable (T.State) -> Void)? = nil,
+        transitionRecorder: TransitionRecorder<T>? = nil
+    ) {
         self.state = initial
-        self.hook = hook
+        self.stateHook = hook
+        self.transitionRecorder = transitionRecorder
+        transitionRecorder?.recordInitialState(initial)
         hook?(initial)
     }
 
@@ -22,11 +29,13 @@ public actor TransitionDrivenStateMachine<T: TransitionType>: Sendable {
         while let currentAction = pendingAction {
             pendingAction = nil
 
+            let previousState = state
             let transition = try matchTransition(for: currentAction)
+            var followUpAction: T.Action?
 
             if let effect = transition.effect {
                 do {
-                    pendingAction = try await effect()
+                    followUpAction = try await effect()
                 } catch let error as CancellationError {
                     throw error
                 } catch {
@@ -38,7 +47,17 @@ public actor TransitionDrivenStateMachine<T: TransitionType>: Sendable {
             }
 
             state = transition.to
-            hook?(state)
+            transitionRecorder?.record(
+                TransitionRecord(
+                    action: currentAction,
+                    transition: transition,
+                    fromState: previousState,
+                    toState: state,
+                    followUpAction: followUpAction
+                )
+            )
+            stateHook?(state)
+            pendingAction = followUpAction
         }
     }
 
