@@ -328,3 +328,41 @@ flowchart TD
     TR --> TC2
     EF --> TC3
 ```
+
+### 10.6 Responsibility split on one page
+
+```mermaid
+flowchart LR
+    U[User]
+    V[View]
+    A[Action]
+    SM[StateMachine]
+    T[Transition]
+    S[State]
+    E[Effect]
+    UC[UseCase]
+    SE[System Event]
+
+    U --> V
+    V --> A
+    A --> SM
+    SM --> T
+    T --> S
+    S --> V
+    SM --> E
+    E --> UC
+    UC --> SE
+    SE --> SM
+```
+
+### 10.7 What this diagram communicates
+
+- The View renders State and sends Actions
+- The StateMachine owns state transitions
+- The UseCase owns side effects
+- System Events route async results back into the StateMachine
+- State / Action / Transition / Effect defined during design map directly into implementation and tests
+
+### 10.8 One-sentence design summary
+
+StateObservationKit prioritizes **reflecting designed state transitions directly in implementation and tests**.
