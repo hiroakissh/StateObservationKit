@@ -38,7 +38,10 @@ final class TaskScreenModel {
 
     init(useCase: TaskUseCase) {
         self.useCase = useCase
-        self.machine = ObservationDrivenStateMachine(initial: .idle) { state, action in
+        self.machine = ObservationDrivenStateMachine(
+            initial: .idle,
+            canSend: Self.isActionAvailable(state:action:)
+        ) { state, action in
             switch state {
             case .idle:
                 switch action {
@@ -85,12 +88,20 @@ final class TaskScreenModel {
         machine.state
     }
 
+    func canSend(_ action: TaskAction) -> Bool {
+        machine.canSend(action)
+    }
+
     func send(_ action: TaskAction) {
         switch action {
         case .startEdit:
+            guard canSend(.startEdit) else { return }
             machine.dispatch(.startEdit)
+
         case .save(let title):
+            guard canSend(.save(title)) else { return }
             machine.dispatch(.save(title))
+
             Task {
                 let result = await Result<Void, Error>.catching {
                     try await useCase.saveTask(title)
@@ -100,8 +111,26 @@ final class TaskScreenModel {
                     machine.dispatch(Self.followUpAction(for: result))
                 }
             }
+
         case .finish, .fail:
             break
+        }
+    }
+
+    nonisolated private static func isActionAvailable(
+        state: TaskState,
+        action: TaskAction
+    ) -> Bool {
+        switch (state, action) {
+        case (.idle, .startEdit),
+             (.editing, .save),
+             (.saving, .finish),
+             (.saving, .fail),
+             (.completed, .startEdit),
+             (.error, .startEdit):
+            return true
+        default:
+            return false
         }
     }
 
@@ -119,6 +148,8 @@ final class TaskScreenModel {
 ```
 
 - `ObservationDrivenStateMachine` には pure reducer を渡し、状態遷移だけを閉じ込めます。
+- `canSend(_:)` を公開しておくと、View は `disabled` やナビゲーション制御を state から直接導けます。
+- `canSend(_:)` は pending reducer がある間は保守的に `false` を返すため、実行中 transition の二重送信を UI 側で避けやすくなります。
 - View からの入力は ScreenModel の `send(_:)` に集約し、副作用の結果は `Result` で受けて follow-up action に変換します。
 - `default` を使わず、状態ごとに受け付ける Action を明示すると、状態追加時に見落としに気付きやすくなります。
 
@@ -126,8 +157,8 @@ final class TaskScreenModel {
 
 - `ObservationDrivenStateMachine.dispatch(_:)` は Machine の低レベル API で、入力を fire-and-forget に積む primitive です。
 - `ObservationDrivenStateMachine.send(_:)` は同じ順序付きキューを await し、state 確定後に戻ります。
-- `send(_:)` は UI / ScreenModel 側の入口で、入力の受理判定、UseCase 起動、`Result` から follow-up action への変換をまとめます。
-- SwiftUI View からは `send(_:)` を呼び、ScreenModel の内部で必要なタイミングだけ `dispatch(_:)` を使うと、View に orchestration が漏れません。
+- ScreenModel の `send(_:)` は UI の入口で、入力の受理判定、UseCase 起動、`Result` から follow-up action への変換をまとめます。
+- SwiftUI View からは ScreenModel の `send(_:)` を呼び、内部で必要なタイミングだけ `dispatch(_:)` / `send(_:)` を使うと、View に orchestration が漏れません。
 
 ### protocol と mock の使い分け
 
@@ -166,8 +197,12 @@ struct TaskView: View {
 
     var body: some View {
         @Bindable var model = model
+        let viewState = TaskViewProjection(
+            state: model.state,
+            canSave: model.canSend(.save(newTitle))
+        )
 
-        switch model.state {
+        switch viewState.rendering {
         case .idle:
             Button("Start Editing") { model.send(.startEdit) }
 
@@ -175,6 +210,7 @@ struct TaskView: View {
             VStack {
                 TextField("Title", text: $newTitle)
                 Button("Save") { model.send(.save(newTitle)) }
+                    .disabled(!viewState.canSave)
             }
 
         case .saving:
@@ -194,11 +230,41 @@ struct TaskView: View {
         }
     }
 }
+
+struct TaskViewProjection {
+    enum Rendering {
+        case idle
+        case editing
+        case saving
+        case completed
+        case error(String)
+    }
+
+    let rendering: Rendering
+    let canSave: Bool
+
+    init(state: TaskState, canSave: Bool) {
+        self.canSave = canSave
+
+        switch state {
+        case .idle:
+            self.rendering = .idle
+        case .editing:
+            self.rendering = .editing
+        case .saving:
+            self.rendering = .saving
+        case .completed:
+            self.rendering = .completed
+        case .error(let message):
+            self.rendering = .error(message)
+        }
+    }
+}
 ```
 
 - `@Bindable` で ScreenModel を監視し、その内部が持つ machine の状態を `switch` で描画します。
+- `TaskViewProjection` のような UI projection を作ると、表示用フラグや文言を Domain 寄りの state に混ぜずに済みます。
 - ボタン操作などのユーザー入力は `TaskScreenModel.send(_:)` に集約し、View から reducer や repository へ直接触れない形を保ちます。
-- つまり View は intent を送るだけで、実際の state commit は ScreenModel 内の `dispatch(_:)` が担当します。
 
 ```swift
 let model = TaskScreenModel(useCase: .init(repository: TaskRepositoryImpl()))
@@ -208,5 +274,35 @@ TaskView(
 ```
 
 - SwiftUI sample でも同様に、View は ScreenModel の `send(_:)` を呼び、ScreenModel が `ObservationDrivenStateMachine` と UseCase を仲介します。
+
+## 5. 値編集を Action に変換する
+
+フォームの値そのものを state に保持している場合は、`binding(_:send:)` を使って SwiftUI の `Binding` を Action へ変換できます。
+
+```swift
+struct EditorState: Equatable, Sendable {
+    var draftTitle = ""
+}
+
+enum EditorAction: ActionType {
+    case titleChanged(String)
+}
+
+let machine = ObservationDrivenStateMachine<EditorState, EditorAction>(
+    initial: EditorState()
+) { state, action in
+    switch action {
+    case .titleChanged(let title):
+        state.draftTitle = title
+    }
+}
+
+TextField(
+    "Title",
+    text: machine.binding(\.draftTitle, send: EditorAction.titleChanged)
+)
+```
+
+このパターンを使うと、View は値の変更を直接 state に書き込まず、常に Action 経由で扱えます。
 
 これらの手順をベースに、ドメイン固有の状態・入力・副作用を組み合わせることで、状態駆動なアプリケーションを段階的に構築できます。

@@ -8,6 +8,8 @@ final class PlayerScreenModel {
     @ObservationIgnored
     private let stateProvider: @MainActor () -> PlayerState
     @ObservationIgnored
+    private let canSendAction: @MainActor (PlayerAction) -> Bool
+    @ObservationIgnored
     private let dispatchAction: @MainActor (PlayerAction) -> Void
     @ObservationIgnored
     private let playerUseCase: any PlayerUseCaseProtocol
@@ -18,6 +20,9 @@ final class PlayerScreenModel {
         playerUseCase: any PlayerUseCaseProtocol
     ) where Machine.State == PlayerState, Machine.Action == PlayerAction {
         self.stateProvider = { machine.state }
+        self.canSendAction = { action in
+            machine.canSend(action)
+        }
         self.dispatchAction = { action in
             machine.dispatch(action)
         }
@@ -33,7 +38,10 @@ final class PlayerScreenModel {
 
     private static func makeMachine() -> ObservationDrivenStateMachine<PlayerState, PlayerAction> {
         ObservationDrivenStateMachine<PlayerState, PlayerAction>(
-            initial: .idle
+            initial: .idle,
+            canSend: { state, action in
+                Self.isActionAvailable(state: state, action: action)
+            }
         ) { state, action in
             Self.reduce(state: &state, action: action)
         }
@@ -43,23 +51,23 @@ final class PlayerScreenModel {
         stateProvider()
     }
 
-    var stateLabel: String {
-        switch state {
-        case .idle: "Idle"
-        case .playing: "Playing"
-        case .paused: "Paused"
-        case .stopped: "Stopped"
-        }
+    var viewState: PlayerViewProjection {
+        PlayerViewProjection(state: state, errorMessage: errorMessage)
+    }
+
+    func canSend(_ action: PlayerAction) -> Bool {
+        canSendAction(action)
     }
 
     // UI input enters through `send(_:)`; this method decides whether the action is valid,
     // forwards accepted input to the machine, and then handles side-effect results.
     func send(_ action: PlayerAction) {
-        guard let operation = Self.operation(
-            for: state,
-            action: action,
-            playerUseCase: playerUseCase
-        ) else {
+        guard canSend(action),
+              let operation = Self.operation(
+                  for: state,
+                  action: action,
+                  playerUseCase: playerUseCase
+              ) else {
             return
         }
 
@@ -72,6 +80,23 @@ final class PlayerScreenModel {
             await MainActor.run {
                 self.consume(result)
             }
+        }
+    }
+
+    nonisolated private static func isActionAvailable(
+        state: PlayerState,
+        action: PlayerAction
+    ) -> Bool {
+        switch (state, action) {
+        case (.idle, .play),
+             (.playing, .pause),
+             (.playing, .stop),
+             (.paused, .resume),
+             (.paused, .stop),
+             (.stopped, .play):
+            return true
+        default:
+            return false
         }
     }
 
@@ -187,6 +212,41 @@ final class PlayerScreenModel {
     }
 }
 
+struct PlayerViewProjection {
+    struct Control {
+        let title: String
+        let action: PlayerAction
+    }
+
+    let title: String
+    let errorMessage: String?
+    let primaryControl: Control
+    let secondaryControl: Control?
+
+    init(state: PlayerState, errorMessage: String?) {
+        self.errorMessage = errorMessage
+
+        switch state {
+        case .idle:
+            self.title = "🎧 State: Idle"
+            self.primaryControl = Control(title: "▶️ Play", action: .play)
+            self.secondaryControl = nil
+        case .playing:
+            self.title = "🎧 State: Playing"
+            self.primaryControl = Control(title: "⏸ Pause", action: .pause)
+            self.secondaryControl = Control(title: "🛑 Stop", action: .stop)
+        case .paused:
+            self.title = "🎧 State: Paused"
+            self.primaryControl = Control(title: "▶️ Resume", action: .resume)
+            self.secondaryControl = Control(title: "🛑 Stop", action: .stop)
+        case .stopped:
+            self.title = "🎧 State: Stopped"
+            self.primaryControl = Control(title: "▶️ Play Again", action: .play)
+            self.secondaryControl = nil
+        }
+    }
+}
+
 @MainActor
 struct PlayerView_ObservationDriven: View {
     @State private var model: PlayerScreenModel
@@ -201,29 +261,28 @@ struct PlayerView_ObservationDriven: View {
 
     var body: some View {
         @Bindable var model = model
+        let viewState = model.viewState
 
         VStack(spacing: 20) {
-            Text("🎧 State: \(model.stateLabel)")
+            Text(viewState.title)
                 .font(.headline)
 
-            if let errorMessage = model.errorMessage {
+            if let errorMessage = viewState.errorMessage {
                 Text("⚠️ \(errorMessage)")
                     .font(.footnote)
                     .foregroundStyle(.red)
             }
 
-            // The View only sends user intent to the ScreenModel.
-            switch model.state {
-            case .idle:
-                Button("▶️ Play") { model.send(.play) }
-            case .playing:
-                Button("⏸ Pause") { model.send(.pause) }
-                Button("🛑 Stop") { model.send(.stop) }
-            case .paused:
-                Button("▶️ Resume") { model.send(.resume) }
-                Button("🛑 Stop") { model.send(.stop) }
-            case .stopped:
-                Button("▶️ Play Again") { model.send(.play) }
+            Button(viewState.primaryControl.title) {
+                model.send(viewState.primaryControl.action)
+            }
+            .disabled(!model.canSend(viewState.primaryControl.action))
+
+            if let secondaryControl = viewState.secondaryControl {
+                Button(secondaryControl.title) {
+                    model.send(secondaryControl.action)
+                }
+                .disabled(!model.canSend(secondaryControl.action))
             }
         }
         .padding()

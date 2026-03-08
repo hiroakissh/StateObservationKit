@@ -7,7 +7,14 @@ public protocol ObservationStateMachineType: AnyObject {
     associatedtype Action: Sendable
 
     var state: State { get }
+    func canSend(_ action: Action) -> Bool
     func dispatch(_ action: Action)
     @discardableResult
     func send(_ action: Action) async -> State
+}
+
+public extension ObservationStateMachineType {
+    func project<Projection>(_ transform: (State) -> Projection) -> Projection {
+        transform(state)
+    }
 }

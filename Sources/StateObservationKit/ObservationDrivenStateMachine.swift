@@ -11,15 +11,30 @@ import Observation
 /// `dispatch(_:)` is fire-and-forget, while `send(_:)` awaits the committed state on the same ordered queue.
 public final class ObservationDrivenStateMachine<State: Equatable & Sendable, Action: Sendable>: ObservationStateMachineType {
     public private(set) var state: State
+    private var pendingActionCount = 0
 #if canImport(Observation)
     @ObservationIgnored
 #endif
     private let reducerExecutor: ReducerExecutor<State, Action>
+    private let availability: @Sendable (State, Action) -> Bool
     private var pendingCommit: Task<Void, Never>?
 
-    public init(initial: State, reducer: @escaping @Sendable (inout State, Action) async -> Void) {
+    public init(
+        initial: State,
+        canSend: @escaping @Sendable (State, Action) -> Bool = { _, _ in true },
+        reducer: @escaping @Sendable (inout State, Action) async -> Void
+    ) {
         self.state = initial
-        self.reducerExecutor = ReducerExecutor(initial: initial, reducer: reducer)
+        self.availability = canSend
+        self.reducerExecutor = ReducerExecutor(
+            initial: initial,
+            canSend: canSend,
+            reducer: reducer
+        )
+    }
+
+    public func canSend(_ action: Action) -> Bool {
+        pendingActionCount == 0 && availability(state, action)
     }
 
     /// Schedules reducer execution and returns immediately.
@@ -37,6 +52,7 @@ public final class ObservationDrivenStateMachine<State: Equatable & Sendable, Ac
     private func enqueue(_ action: Action) -> Task<State, Never> {
         let previousCommit = pendingCommit
         let reducerExecutor = self.reducerExecutor
+        pendingActionCount += 1
 
         let task = Task<State, Never> { [weak self] in
             _ = await previousCommit?.value
@@ -45,6 +61,9 @@ public final class ObservationDrivenStateMachine<State: Equatable & Sendable, Ac
 
             await MainActor.run {
                 self?.state = newState
+                if let self {
+                    self.pendingActionCount -= 1
+                }
             }
 
             return newState
@@ -60,14 +79,24 @@ public final class ObservationDrivenStateMachine<State: Equatable & Sendable, Ac
 
 private actor ReducerExecutor<State: Sendable, Action: Sendable> {
     private var state: State
+    private let canSend: @Sendable (State, Action) -> Bool
     private let reducer: @Sendable (inout State, Action) async -> Void
 
-    init(initial: State, reducer: @escaping @Sendable (inout State, Action) async -> Void) {
+    init(
+        initial: State,
+        canSend: @escaping @Sendable (State, Action) -> Bool,
+        reducer: @escaping @Sendable (inout State, Action) async -> Void
+    ) {
         self.state = initial
+        self.canSend = canSend
         self.reducer = reducer
     }
 
     func run(action: Action) async -> State {
+        guard canSend(state, action) else {
+            return state
+        }
+
         var nextState = state
         await reducer(&nextState, action)
         state = nextState

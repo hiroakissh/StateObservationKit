@@ -116,6 +116,8 @@ Presentation Projection
 SwiftUI View
 ```
 
+実装上は `machine.project { ... }` のように、View 専用の派生表現をその場で構成できます。
+
 ### 5. テストダブルはプロトコル経由で扱う
 
 `ObservationStateMachineType` と `ObservationDrivenStateMachineMock` を使うことで、UI やアプリケーションコードは具体的な実行時挙動ではなく抽象に依存できます。
@@ -130,6 +132,8 @@ StateObservationKit は、プラットフォームが許す範囲で SwiftUI-fir
 
 - 利用可能な環境では Observation を使う
 - `@Bindable` で扱いやすい構造を保つ
+- `machine.canSend(_:)` で操作可能性を UI に公開する
+- `machine.binding(_:send:)` で値更新を Action に戻せるようにする
 - View での state access を単純に保つ
 - Reducer 実行を逐次化して順序を保証する
 

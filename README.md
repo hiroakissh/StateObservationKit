@@ -48,7 +48,7 @@ StateObservationKit is intended to live in the Application layer. It owns flow c
 | Type | Purpose | Typical use |
 | --- | --- | --- |
 | `TransitionDrivenStateMachine` | Makes transitions and effects explicit with strongly typed `enum` definitions. | Application flows, orchestration, business logic control |
-| `ObservationDrivenStateMachine` | Publishes state reactively for UI layers and serializes reducer execution. | SwiftUI-facing state machines, Observation integration |
+| `ObservationDrivenStateMachine` | Publishes state reactively for UI layers and serializes reducer execution. | SwiftUI-facing state machines, Observation integration, UI availability checks, and projection-driven views |
 | `ObservationDrivenStateMachineMock` | Replaces async behavior with deterministic synchronous state changes for tests. | Unit tests, UI tests, previews |
 
 ## Concept Mapping
@@ -87,6 +87,7 @@ If the roadmap and current implementation differ, treat that gap as an active mi
 
 - `dispatch(_:)` returns immediately and schedules reducer execution asynchronously.
 - `send(_:)` enqueues work on the same ordered queue and returns after the resulting state has been published.
+- `canSend(_:)` returns a conservative UI-facing availability check based on the published state and whether reducer work is still pending.
 - Reducer execution is serialized on an ordered internal queue, so `dispatch(_:)` and `send(_:)` are applied in call order.
 - `state` is updated on the main actor after each reducer run completes.
 - `dispatch(_:)` remains the fire-and-forget API; use `send(_:)` when tests or orchestration code need an explicit completion point.
@@ -147,7 +148,15 @@ print(await machine.state) // playing
 
 ```swift
 let machine = ObservationDrivenStateMachine<PlayerState, PlayerAction>(
-    initial: .idle
+    initial: .idle,
+    canSend: { state, action in
+        switch (state, action) {
+        case (.idle, .play), (.playing, .pause), (.paused, .play):
+            return true
+        default:
+            return false
+        }
+    }
 ) { state, action in
     switch (state, action) {
     case (.idle, .play):
@@ -176,13 +185,44 @@ struct PlayerView: View {
     @Bindable var machine: ObservationDrivenStateMachine<PlayerState, PlayerAction>
 
     var body: some View {
+        let viewState = machine.project(PlayerControls.init)
+
         VStack {
             Text("\(String(describing: machine.state))")
-            Button("Play") { machine.dispatch(.play) }
-            Button("Pause") { machine.dispatch(.pause) }
+            Button(viewState.primaryTitle) {
+                Task {
+                    _ = await machine.send(viewState.primaryAction)
+                }
+            }
+                .disabled(!machine.canSend(viewState.primaryAction))
         }
     }
 }
+
+struct PlayerControls {
+    let primaryTitle: String
+    let primaryAction: PlayerAction
+
+    init(state: PlayerState) {
+        switch state {
+        case .idle, .paused:
+            self.primaryTitle = "Play"
+            self.primaryAction = .play
+        case .playing:
+            self.primaryTitle = "Pause"
+            self.primaryAction = .pause
+        }
+    }
+}
+```
+
+When a control needs a `Binding`, use `binding(_:send:)` to map value changes back into actions.
+
+```swift
+TextField(
+    "Title",
+    text: machine.binding(\.draftTitle, send: EditorAction.titleChanged)
+)
 ```
 
 The snippet above is the smallest possible example, so the View talks to the machine directly. In the package sample, SwiftUI input goes through a ScreenModel-style `send(_:)` method first, and that wrapper decides when to call `dispatch(_:)`. Use that shape when side effects, `Result` handling, or follow-up actions should stay out of the View.
