@@ -79,6 +79,18 @@ Responsibility split:
 | UseCase | Domain logic execution |
 | Infrastructure | External I/O implementations |
 
+## Architecture Comparison (MVVM / TCA / StateObservationKit)
+
+To quickly answer "How is this different from MVVM or TCA?", here is the short version.
+
+| Architecture | Design Center | Characteristic |
+| --- | --- | --- |
+| MVVM | ViewModel | Easy start, but responsibilities tend to accumulate |
+| TCA | Reducer / Store | Strong consistency, but heavier concepts/boilerplate |
+| StateObservationKit | StateMachine / Transition | Explicit transitions with lightweight architecture-to-code mapping |
+
+See [Architecture Comparison](docs/architecture_comparison.md) for diagrams, trade-offs, and adoption guidance.
+
 ## Layer Placement
 
 ```text
@@ -392,11 +404,37 @@ The snippet above is the smallest possible example, so the View talks to the mac
 
 ## Documentation
 
+### Core
+
 - [Roadmap](ROADMAP.md)
 - [Architecture](docs/architecture.md)
+- [Usage](docs/usage.md)
+- [Philosophy](docs/philosophy.md)
+
+### Design Guides
+
+- [Architecture Comparison](docs/architecture_comparison.md)
+- [StateMachine Design Guide](docs/state_machine_design_guide.md)
+- [Feature Design Sheet v1 Template](docs/templates/feature_design_sheet_v1.md)
+- [Feature Design Sheet v1 Sample](docs/templates/feature_design_sheet_v1.sample.md)
+
+### Contribution / Practice
+
+- [Best Practices](docs/best_practices.md)
+- [Contributing](docs/contributing.md)
+- [Integration Examples](docs/integration_examples.md)
+
+### Japanese Documents
+
 - [Japanese README](README.ja.md)
-- [Japanese roadmap](ROADMAP.ja.md)
-- [Japanese architecture document](docs/architecture.ja.md)
+- [Japanese Roadmap](ROADMAP.ja.md)
+- [Japanese Architecture](docs/architecture.ja.md)
+- [Japanese Architecture Comparison](docs/architecture_comparison.ja.md)
+- [Japanese StateMachine Design Guide](docs/state_machine_design_guide.ja.md)
+- [Japanese Feature Design Sheet v1 Template](docs/templates/feature_design_sheet_v1.ja.md)
+- [Japanese Feature Design Sheet v1 Sample](docs/templates/feature_design_sheet_v1.sample.ja.md)
+- [Q1 Execution Plan (Japanese)](docs/q1_execution_plan.ja.md)
+- [Q2 Execution Plan (Japanese)](docs/q2_execution_plan.ja.md)
 
 ## 2026 Roadmap Snapshot
 
