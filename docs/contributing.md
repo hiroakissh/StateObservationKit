@@ -40,6 +40,17 @@ StateObservationKit への貢献を歓迎します。本ガイドでは、Pull R
 3. 標準 validation として `./scripts/validate.sh` を実行します。
 4. Reviewer からのフィードバックを取り込み、依存方向、用語の一貫性、テストの網羅性を再確認してください。
 
+## Branching and Release
+
+- default branch は `develop` を前提とします。
+- 新しい release train は `develop` から `feature/release-x.y.z` または `feature/release-x.y.z-beta.n` を作成し、repo 直下の `VERSION` を同じ値に更新してください。
+- release train の途中で追加機能や修正を行う場合は、`feature/<topic>`、`fix/<topic>`、`docs/<topic>` のような通常ブランチ名で個別ブランチを切り、release train branch へ戻してください。`feature/release-...` は release train 専用です。
+- `main` には `develop` からのみ merge し、`main` は release branch として扱います。
+- `feature/release-*` への push / PR でも `ci.yml` と `format.yml` が走るため、release train 内の統合作業でも検証できます。
+- `main` へ merge されたとき、`VERSION` が前回の `main` から更新されていれば `.github/workflows/release-tag.yml` が同名 tag を自動作成します。
+- `VERSION` は `MAJOR.MINOR.PATCH` だけでなく `MAJOR.MINOR.PATCH-prerelease` も使えます。beta の場合は `1.4.0-beta.1` のように表現してください。
+- 詳細な運用手順は `docs/release_workflow.ja.md` と `docs/release_workflow.md` を参照してください。
+
 ## Validation Standard
 
 標準 validation は次の 2 コマンドです。通常は個別実行ではなく `./scripts/validate.sh` を使ってください。
@@ -53,7 +64,8 @@ swift build -Xswiftc -strict-concurrency=complete
 - docs-only change でローカルの Swift 検証を省略する場合は `./scripts/validate.sh docs-only` を使い、PR 本文や進捗報告に skip reason を明記してください。
 - macOS hosted runner 上の追加検証として、必要に応じて `make test-xcode` または `make ci` を使ってください。
 - format は `swift-format` を採用し、ローカルでは `make format` / `make format-check` を入口にします。
-- CI は `.github/workflows/ci.yml` と `.github/workflows/format.yml` から `Makefile` / `scripts/` の入口を呼び出します。ローカルと CI で別の検証手順を増やさないようにしてください。
+- `ci.yml` と `format.yml` は `develop` を統合ブランチとして検証し、`release-tag.yml` は `main` への merge 後に release tag を作成します。
+- CI は `.github/workflows/ci.yml`、`.github/workflows/format.yml`、`.github/workflows/release-tag.yml` から `Makefile` / `scripts/` の入口を呼び出します。ローカルと CI で別の検証手順を増やさないようにしてください。
 
 ## Repo-local Skill
 
