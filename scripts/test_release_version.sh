@@ -27,6 +27,15 @@ run_in_fixture "1.2.3-beta.1" validate
 echo "[test-release-version] match release branch"
 run_in_fixture "1.2.3-beta.1" match-branch "feature/release-1.2.3-beta.1"
 
+echo "[test-release-version] detect release branch"
+run_in_fixture "1.2.3" is-release-branch "feature/release-1.2.3"
+
+echo "[test-release-version] reject non-release branch prefix"
+if run_in_fixture "1.2.3" is-release-branch "feature/release-governance"; then
+  echo "non-release branch unexpectedly matched the release branch pattern" >&2
+  exit 1
+fi
+
 echo "[test-release-version] reject invalid prerelease"
 if run_in_fixture "1.0.0-." validate; then
   echo "invalid prerelease format unexpectedly passed validation" >&2

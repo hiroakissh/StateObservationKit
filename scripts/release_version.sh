@@ -4,6 +4,8 @@ set -euo pipefail
 
 root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 version_file="$root_dir/VERSION"
+version_pattern='[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?'
+release_branch_pattern="^feature/release-${version_pattern}$"
 
 read_version_file() {
   if [[ ! -f "$version_file" ]]; then
@@ -22,10 +24,15 @@ validate_version() {
     return 1
   fi
 
-  if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$ ]]; then
+  if [[ ! "$version" =~ ^${version_pattern}$ ]]; then
     echo "VERSION must use semantic version format MAJOR.MINOR.PATCH or MAJOR.MINOR.PATCH-prerelease: $version" >&2
     return 1
   fi
+}
+
+is_release_branch_name() {
+  local branch="$1"
+  [[ "$branch" =~ $release_branch_pattern ]]
 }
 
 get_version_from_ref() {
@@ -56,8 +63,8 @@ case "$command_name" in
     branch="${2:?branch name is required}"
     prefix="feature/release-"
 
-    if [[ "$branch" != "$prefix"* ]]; then
-      echo "Release branch must start with $prefix: $branch" >&2
+    if ! is_release_branch_name "$branch"; then
+      echo "Release branch must use feature/release-<semver>: $branch" >&2
       exit 1
     fi
 
@@ -72,8 +79,16 @@ case "$command_name" in
 
     echo "[release-version] branch=$branch VERSION=$version"
     ;;
+  is-release-branch)
+    branch="${2:?branch name is required}"
+    if is_release_branch_name "$branch"; then
+      echo "[release-version] release-branch=$branch"
+      exit 0
+    fi
+    exit 1
+    ;;
   *)
-    echo "usage: $0 {get|get-from-ref|validate|match-branch}" >&2
+    echo "usage: $0 {get|get-from-ref|validate|match-branch|is-release-branch}" >&2
     exit 1
     ;;
 esac

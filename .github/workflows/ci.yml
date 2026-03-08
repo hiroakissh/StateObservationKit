@@ -29,6 +29,32 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Detect release branch context
+        id: release-context
+        shell: bash
+        run: |
+          head_ref="${{ github.head_ref }}"
+          base_ref="${{ github.base_ref }}"
+          ref_name="${{ github.ref_name }}"
+
+          if [[ -n "$head_ref" ]] && ./scripts/release_version.sh is-release-branch "$head_ref" >/dev/null 2>&1; then
+            echo "head_release=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "head_release=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          if [[ -n "$base_ref" ]] && ./scripts/release_version.sh is-release-branch "$base_ref" >/dev/null 2>&1; then
+            echo "base_release=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "base_release=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          if [[ -n "$ref_name" ]] && ./scripts/release_version.sh is-release-branch "$ref_name" >/dev/null 2>&1; then
+            echo "push_release=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "push_release=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Validate VERSION metadata
         run: ./scripts/release_version.sh validate
 
@@ -41,15 +67,15 @@ jobs:
           fi
 
       - name: Validate release branch version alignment
-        if: github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/release-')
+        if: github.event_name == 'pull_request' && steps.release-context.outputs.head_release == 'true'
         run: ./scripts/release_version.sh match-branch "${{ github.head_ref }}"
 
       - name: Validate target release branch version alignment before merge
-        if: github.event_name == 'pull_request' && startsWith(github.base_ref, 'feature/release-')
+        if: github.event_name == 'pull_request' && steps.release-context.outputs.base_release == 'true'
         run: ./scripts/release_version.sh match-branch "${{ github.base_ref }}"
 
       - name: Validate release branch version alignment on push
-        if: github.event_name == 'push' && startsWith(github.ref_name, 'feature/release-')
+        if: github.event_name == 'push' && steps.release-context.outputs.push_release == 'true'
         run: ./scripts/release_version.sh match-branch "${{ github.ref_name }}"
 
       - name: Run release governance script tests
