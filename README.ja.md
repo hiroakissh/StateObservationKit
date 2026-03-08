@@ -2,19 +2,15 @@
 
 [English](README.md) | [Roadmap](ROADMAP.md) | [ロードマップ](ROADMAP.ja.md) | [Architecture](docs/architecture.md) | [アーキテクチャ](docs/architecture.ja.md)
 
-StateObservationKit は、SwiftUI 向けの軽量なアーキテクチャ基盤です。大きな ViewModel や重いフレームワークに寄せるのではなく、**状態遷移を中心に設計したアーキテクチャを、そのままコードとして実行可能にする**ことを目指しています。
+> **Make architecture executable.**
 
-設計した構造を、実装でも同じ構造として保つ。
-それが StateObservationKit の出発点です。
+StateObservationKit は、SwiftUI 向けの軽量なアーキテクチャ基盤です。
 
-## README の読み順（思想 → 図 → 具体例 → 導入理由）
+目標はシンプルです。
 
-この README は、次の順番で理解できるように構成しています。
+**システムを StateMachine として設計し、その設計をそのまま実装にする。**
 
-1. 思想（なぜ必要か）
-2. 図（どう分離するか）
-3. 具体例（どう書くか）
-4. 導入理由（どんなチームに合うか）
+大きな ViewModel や重いフレームワークに寄せるのではなく、明示的な状態遷移を中心にアプリケーションを構造化します。
 
 ## The Problem（解決したい課題）
 
@@ -26,58 +22,79 @@ SwiftUI プロジェクトでは、時間とともにアーキテクチャが崩
 | Redux 系 | スケールとともにボイラープレートが増えやすい |
 | 包括的フレームワーク | 強力だが、小〜中規模では導入・維持コストが重くなりやすい |
 
-結果として、設計は図に残り、実装は別の形へ崩れていく。
+結果として、設計は図に残り、実装は別の形へ崩れていきます。
 StateObservationKit はこの乖離を埋めるためのライブラリです。
 
-## The Goal（目標）
+## Architecture Overview（1枚で理解）
 
-目標はシンプルです。
+```mermaid
+flowchart LR
+    U[User] --> V[SwiftUI View]
+    V --> A[Action]
+    A --> SM[StateMachine]
+    SM --> T[Transition]
+    T --> S[Next State]
+    S --> V
 
-> **Architecture should be executable.**
-
-現在の API では、次の形で振る舞いを定義します。
-
-```text
-State + Action
-    ↓
-Transition
-    ↓
-Next State
+    SM --> E[Side Effect]
+    E --> UC[UseCase]
+    UC --> SE[System Event]
+    SE --> SM
 ```
 
-設計概念としての `Intent` は維持しつつ、公開 API の説明では `Action` / `ActionType` を優先します。
+## Core Concepts（用語定義）
 
-## Core Philosophy
+設計概念として `Intent` は維持しつつ、公開 API の説明では `Action` / `ActionType` を優先します。
 
-- State は single source of truth
-- 状態遷移は明示的・追跡可能であるべき
-- StateMachine は Application layer に属し、UseCase を協調させる
-- SwiftUI では Observation と `@Bindable` に自然に馴染むべき
-- フルスタックフレームワークより軽量であるべき
+| Concept | Description |
+| --- | --- |
+| State | 現在のシステム状態 |
+| Action | ユーザーまたはシステムが発火するイベント |
+| Transition | State をどう変化させるかの規則 |
+| StateMachine | Transition を実行する中核 |
+| Side Effect | API・ストレージなど外部操作 |
+| UseCase | Side Effect を実行するドメインロジック |
 
-## Architecture Overview
-
-```text
-SwiftUI View
-   ↓
-ScreenModel（任意）
-   ↓
-StateMachine
-   ↓
-UseCase / Domain
-   ↓
-Infrastructure
-```
-
-責務分離の目安:
+## Responsibilities（責務分離）
 
 | Layer | Responsibility |
 | --- | --- |
-| View | UI 描画 |
-| ScreenModel | UI 入力の調停、Action 送信の集約 |
-| StateMachine | 状態遷移とフロー制御 |
-| UseCase | ドメインロジック |
-| Infrastructure | 外部 I/O 実装 |
+| View | State を描画し Action を送る |
+| StateMachine | 状態遷移を管理する |
+| UseCase | 副作用を実行する |
+| System Event | 非同期結果を StateMachine へ戻す |
+
+この分離により、アプリケーションロジックは予測可能かつテストしやすくなります。
+
+## Architecture Comparison（MVVM / TCA / StateObservationKit）
+
+「MVVM の言い換えなのか」「TCA と何が違うのか」を判断しやすいよう、比較の要点を先に示します。
+
+| Architecture | Design Center | 特徴 |
+| --- | --- | --- |
+| MVVM | ViewModel | 始めやすいが責務が集中しやすい |
+| TCA | Reducer / Store | 一貫性は高いが概念・ボイラープレートが増えやすい |
+| StateObservationKit | StateMachine / Transition | 状態遷移を明示し、軽量に設計を実装へ写像しやすい |
+
+詳しい比較（図・使い分け・哲学の違い）は [アーキテクチャ比較](docs/architecture_comparison.ja.md) を参照してください。
+
+## Why This Architecture Works
+
+このアーキテクチャのルールは明快です。
+
+> **State は明示的な Transition を通じてのみ変化する。**
+
+これにより次が成立します。
+
+- システムの振る舞いが可視化される
+- ビジネスロジックがテスト可能になる
+- 設計と実装が揃い続ける
+
+## Philosophy
+
+多くのアーキテクチャが「コードの整理」に重心を置くのに対し、StateObservationKit は「設計の実行」に重心を置きます。
+
+設計は文書だけに存在するものではなく、コード上で実行可能であるべきです。
 
 ## レイヤー上の位置づけ
 
@@ -396,6 +413,10 @@ TextField(
 - [ロードマップ](ROADMAP.ja.md)
 - [Architecture](docs/architecture.md)
 - [アーキテクチャ](docs/architecture.ja.md)
+- [アーキテクチャ比較](docs/architecture_comparison.ja.md)
+- [Feature Design Sheet v1 テンプレート](docs/templates/feature_design_sheet_v1.ja.md)
+- [Feature Design Sheet v1 サンプル](docs/templates/feature_design_sheet_v1.sample.ja.md)
+- [StateMachine Design Guide](docs/state_machine_design_guide.ja.md)
 - [Q2 実行計画](docs/q2_execution_plan.ja.md)
 - [English README](README.md)
 
