@@ -2,19 +2,15 @@
 
 [日本語](README.ja.md) | [Roadmap](ROADMAP.md) | [ロードマップ](ROADMAP.ja.md) | [Architecture](docs/architecture.md) | [アーキテクチャ](docs/architecture.ja.md)
 
-StateObservationKit is a lightweight architecture foundation for SwiftUI applications. Instead of shaping application logic around large ViewModels or heavy frameworks, it helps you make **architecture executable in code through explicit state transitions**.
+> **Make architecture executable.**
 
-Design the structure once, then keep the same structure in implementation.
-That is the core promise of StateObservationKit.
+StateObservationKit is a lightweight architecture foundation for SwiftUI applications.
 
-## README Narrative Order (Philosophy -> Diagram -> Example -> Adoption)
+The goal is simple.
 
-This README is organized in the following order:
+**Design the system as a StateMachine, and implement that design as-is.**
 
-1. Philosophy (why this is needed)
-2. Diagram (how responsibilities are separated)
-3. Concrete examples (how to write it)
-4. Adoption guidance (when this fits your team)
+Instead of centering the application around large ViewModels or heavy frameworks, it structures the app around explicit state transitions.
 
 ## The Problem
 
@@ -29,55 +25,76 @@ In many SwiftUI projects, architecture gradually collapses over time.
 As a result, architecture stays in diagrams while implementation drifts elsewhere.
 StateObservationKit is designed to close that gap.
 
-## The Goal
-
-The goal is simple:
-
-> **Architecture should be executable.**
-
-With the current API, behavior is modeled as:
-
-```text
-State + Action
-    ↓
-Transition
-    ↓
-Next State
-```
-
-We still use `Intent` as an architectural concept, but public API guidance prioritizes `Action` / `ActionType`.
-
-## Core Philosophy
-
-- State is the source of truth
-- Transitions should be explicit and inspectable
-- State machines belong to the Application layer and coordinate UseCases
-- SwiftUI ergonomics should feel natural with Observation and `@Bindable`
-- The package should remain lighter and simpler than full architecture frameworks
-
 ## Architecture Overview
 
-```text
-SwiftUI View
-   ↓
-ScreenModel (optional)
-   ↓
-StateMachine
-   ↓
-UseCase / Domain
-   ↓
-Infrastructure
+```mermaid
+flowchart LR
+    U[User] --> V[SwiftUI View]
+    V --> A[Action]
+    A --> SM[StateMachine]
+    SM --> T[Transition]
+    T --> S[Next State]
+    S --> V
+
+    SM --> E[Side Effect]
+    E --> UC[UseCase]
+    UC --> SE[System Event]
+    SE --> SM
 ```
 
-Responsibility split:
+## Core Concepts
+
+We keep `Intent` as an architectural concept, while public API guidance prioritizes `Action` / `ActionType`.
+
+| Concept | Description |
+| --- | --- |
+| State | The current system state |
+| Action | An event triggered by the user or the system |
+| Transition | The rule that changes state |
+| StateMachine | The core that executes transitions |
+| Side Effect | External work such as API or storage access |
+| UseCase | Domain logic that performs side effects |
+
+## Responsibilities
 
 | Layer | Responsibility |
 | --- | --- |
-| View | UI rendering |
-| ScreenModel | Coordinate UI input and aggregate Action sending |
-| StateMachine | State transitions and flow control |
-| UseCase | Domain logic execution |
-| Infrastructure | External I/O implementations |
+| View | Renders state and sends actions |
+| StateMachine | Manages state transitions |
+| UseCase | Performs side effects |
+| System Event | Feeds async results back into the StateMachine |
+
+This separation keeps application logic predictable and testable.
+
+## Architecture Comparison (MVVM / TCA / StateObservationKit)
+
+To quickly answer "Is this just MVVM with different names?" or "How is this different from TCA?", start with this summary.
+
+| Architecture | Design Center | Characteristic |
+| --- | --- | --- |
+| MVVM | ViewModel | Easy to start, but responsibilities tend to accumulate |
+| TCA | Reducer / Store | Highly consistent, but concepts and boilerplate grow faster |
+| StateObservationKit | StateMachine / Transition | Makes transitions explicit and maps architecture into code with less ceremony |
+
+See [Architecture Comparison](docs/architecture_comparison.md) for diagrams, trade-offs, and adoption guidance.
+
+## Why This Architecture Works
+
+The core rule is simple:
+
+> **State changes only through explicit transitions.**
+
+That gives you:
+
+- Visible system behavior
+- Testable business logic
+- Architecture and implementation that stay aligned
+
+## Philosophy
+
+Many architecture styles optimize mainly for organizing code. StateObservationKit optimizes for making design executable.
+
+Architecture should not live only in documents. It should be executable in code.
 
 ## Layer Placement
 
@@ -91,7 +108,7 @@ UseCase / Domain
 Infrastructure
 ```
 
-StateObservationKit is intended for the Application layer. State changes must go through machine APIs (`dispatch(_:)` / `send(_:)`), while concrete infrastructure dependencies stay behind UseCase/Environment boundaries.
+StateObservationKit is intended for the Application layer. State changes must go through machine APIs (`dispatch(_:)` / `send(_:)`), while concrete infrastructure dependencies stay outside UseCase and Environment boundaries.
 
 ## Example: Avoid Large ViewModels, Make Transitions Explicit
 
@@ -158,29 +175,29 @@ To support adoption decisions, we plan sample apps as first-class onboarding ass
 - Include:
   - add / complete / delete base transitions
   - filter switching (`all / active / completed`)
-  - ScreenModel as input boundary, machine focused on transitions
+  - ScreenModel as the input boundary, with the machine focused on transitions
 
 ### 2. ChatApp
 
-- Goal: show async events and ordering guarantees
+- Goal: show how to handle async events and ordering guarantees
 - Include:
-  - sending / sent / failed state modeling
-  - follow-up action and retry flow
+  - `sending / sent / failed` state modeling
+  - follow-up actions and retry flow
   - tests for invalid transitions and effect failures
 
 ### 3. PlayerApp
 
-- Goal: project explicit transitions into media-control UI
+- Goal: show how explicit media-style transitions project into UI
 - Include:
   - `idle / playing / paused` transitions
   - button availability driven by `canSend(_:)`
-  - `@Bindable` + projection for simpler View code
+  - simpler view code via `@Bindable` and projection
 
 ### Shared sample principles
 
-- Prioritize recommended architecture, not just runnable demos
-- Do not mutate state from View directly; go through machine APIs
-- Include deterministic tests using `ObservationDrivenStateMachineMock`
+- Prioritize recommended architecture rather than the shortest runnable demo
+- Do not mutate state directly from the View; always go through machine APIs
+- Include deterministic tests with `ObservationDrivenStateMachineMock`
 
 ## Current Status And Reading Order
 
@@ -392,11 +409,37 @@ The snippet above is the smallest possible example, so the View talks to the mac
 
 ## Documentation
 
+### Core
+
 - [Roadmap](ROADMAP.md)
+- [Japanese Roadmap](ROADMAP.ja.md)
 - [Architecture](docs/architecture.md)
+- [Japanese Architecture](docs/architecture.ja.md)
+- [Usage](docs/usage.md)
+- [Philosophy](docs/philosophy.md)
+
+### Design Guides
+
+- [Architecture Comparison](docs/architecture_comparison.md)
+- [Japanese Architecture Comparison](docs/architecture_comparison.ja.md)
+- [StateMachine Design Guide](docs/state_machine_design_guide.md)
+- [Japanese StateMachine Design Guide](docs/state_machine_design_guide.ja.md)
+- [Feature Design Sheet v1 Template](docs/templates/feature_design_sheet_v1.md)
+- [Feature Design Sheet v1 Sample](docs/templates/feature_design_sheet_v1.sample.md)
+- [Japanese Feature Design Sheet v1 Template](docs/templates/feature_design_sheet_v1.ja.md)
+- [Japanese Feature Design Sheet v1 Sample](docs/templates/feature_design_sheet_v1.sample.ja.md)
+
+### Contribution / Practice
+
+- [Best Practices](docs/best_practices.md)
+- [Contributing](docs/contributing.md)
+- [Integration Examples](docs/integration_examples.md)
+- [Q1 Execution Plan (Japanese)](docs/q1_execution_plan.ja.md)
+- [Q2 Execution Plan (Japanese)](docs/q2_execution_plan.ja.md)
+
+### README
+
 - [Japanese README](README.ja.md)
-- [Japanese roadmap](ROADMAP.ja.md)
-- [Japanese architecture document](docs/architecture.ja.md)
 
 ## 2026 Roadmap Snapshot
 
