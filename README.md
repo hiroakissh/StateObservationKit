@@ -4,6 +4,27 @@
 
 StateObservationKit is a lightweight state-machine toolkit for building state-driven application architecture in SwiftUI. It combines Swift Concurrency and SwiftUI Observation so that transitions stay explicit, side effects stay controlled, and UI integration stays natural.
 
+## Positioning: Why This Instead of Another Architecture Framework?
+
+StateObservationKit is not trying to be a full replacement for every opinionated ecosystem.
+Its concrete focus is:
+
+- **Observation-first SwiftUI architecture**
+- **Explicit state transitions with small surface area**
+- **Application-layer orchestration without framework lock-in**
+
+In practice, this package aims to replace ad-hoc **MVVM + mutable ViewModel sprawl** with a state-machine model that still feels native in SwiftUI.
+
+### Practical Comparison
+
+| Approach | Common pain point | StateObservationKit response |
+| --- | --- | --- |
+| MVVM | State and business rules leak across many mutable properties. | Keep behavior in explicit `State + Action -> Transition` definitions. |
+| Redux-style frameworks | Boilerplate grows as architecture scales. | Keep API intentionally small and centered on transitions/reducers. |
+| Full-stack architecture frameworks | Strong ecosystem, but often heavy for small to medium apps. | Adopt only the state-machine core and integrate boundaries gradually. |
+
+If your team wants predictable state transitions and Observation-native SwiftUI integration **without adopting a large framework all at once**, this package is designed for that gap.
+
 ## Vision
 
 StateObservationKit aims to make state transitions the primary mechanism for application behavior.
@@ -38,6 +59,20 @@ Application State Machine
  ↓
 UseCase / Domain
  ↓
+Infrastructure
+```
+
+### SwiftUI Flow (recommended)
+
+```text
+SwiftUI View
+   ↓ bind / send
+Screen Model (optional)
+   ↓ delegates intents as Action
+StateMachine (Application layer)
+   ↓ calls abstractions
+UseCase / Domain
+   ↓ uses concrete implementations
 Infrastructure
 ```
 
