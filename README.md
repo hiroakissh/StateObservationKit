@@ -50,6 +50,8 @@ StateObservationKit is intended to live in the Application layer. It owns flow c
 | `TransitionDrivenStateMachine` | Makes transitions and effects explicit with strongly typed `enum` definitions. | Application flows, orchestration, business logic control |
 | `ObservationDrivenStateMachine` | Publishes state reactively for UI layers and serializes reducer execution. | SwiftUI-facing state machines, Observation integration, UI availability checks, and projection-driven views |
 | `ObservationDrivenStateMachineMock` | Replaces async behavior with deterministic synchronous state changes for tests. | Unit tests, UI tests, previews |
+| `TransitionRecorder` | Records committed transitions, actions, and state sequences in order. | Transition history assertions, debugging, follow-up action tracing |
+| `StateSequenceRecorder` | Records arbitrary state snapshots with a lightweight API. | Hook-based state sequence assertions, previews, simple tracing |
 
 ## Concept Mapping
 
@@ -82,6 +84,7 @@ If the roadmap and current implementation differ, treat that gap as an active mi
 - The machine runs a transition's `effect` before committing `state`.
 - If the `effect` throws a non-cancellation error, the machine leaves state unchanged and throws `TransitionDispatchError.effectFailed`.
 - If the `effect` returns a follow-up `Action`, the machine commits the current transition first and then dispatches the follow-up action from the new state.
+- When you pass a `transitionRecorder`, the machine records only committed transitions. Invalid transitions and effect failures do not pollute the history.
 
 ### `ObservationDrivenStateMachine`
 
@@ -143,6 +146,27 @@ print(await machine.state) // playing
 ```
 
 `dispatch(_:)` is the only entry point for state changes. If an effect returns a follow-up `Action`, the machine dispatches it after the current transition has been committed.
+
+As a thin Q4 production/testing utility, `TransitionRecorder` and `StateSequenceRecorder` let you inspect committed history without changing control flow:
+
+```swift
+let transitions = TransitionRecorder<PlayerTransition>()
+let states = StateSequenceRecorder<PlayerState>()
+
+let machine = TransitionDrivenStateMachine<PlayerTransition>(
+    initial: .idle,
+    hook: { states.record($0) },
+    transitionRecorder: transitions
+)
+
+try await machine.dispatch(.play)
+
+print(transitions.actions)       // [.play]
+print(transitions.stateSequence) // [.idle, .playing]
+print(states.snapshot)           // [.idle, .playing]
+```
+
+Because `TransitionRecorder` records only committed state changes, tests that involve failing effects can assert the confirmed history directly.
 
 ## Example: Observation-Friendly State
 

@@ -26,6 +26,8 @@ StateObservationKit を既存のアプリ基盤に組み合わせる際のヒン
 ## StateMachine のテスト設計
 - イベントシーケンスを `dispatch` し、期待される状態遷移をアサートするテストを用意します。
 - 非同期副作用は UseCase や Repository をモック化し、期待するイベントの発火を検証します。
+- `TransitionDrivenStateMachine` では `TransitionRecorder` を渡すと、commit 済みの `actions` / `transitions` / `stateSequence` を順序付きで取得できます。follow-up action を含むフローの検証に向きます。
+- `StateSequenceRecorder` を `hook` と組み合わせると、状態列だけを軽量に検証できます。invalid transition や effect failure を含むケースでも、確定済み state のみを追跡しやすくなります。
 - `Testing/ObservationDrivenStateMachineMock` を活用して Reducer のロジックのみを検証し、副作用を排除した純粋なテストを実現します。
 - UI / ScreenModel が machine を保持する場合は `ObservationStateMachineType` を注入境界に置き、production では real machine、preview / state assertion では mock を差し替える形にすると一貫します。
 

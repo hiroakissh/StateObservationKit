@@ -4,7 +4,7 @@ import StateObservationKit
 
 final class TransitionDrivenStateMachineTests: XCTestCase {
     func testPlayerTransitionsUpdateStateAndHook() async throws {
-        let recorder = StateRecorder<PlayerState>()
+        let recorder = StateSequenceRecorder<PlayerState>()
         let machine = TransitionDrivenStateMachine<PlayerTransition>(
             initial: .idle,
             hook: { recorder.record($0) }
@@ -24,7 +24,7 @@ final class TransitionDrivenStateMachineTests: XCTestCase {
     }
 
     func testInvalidTransitionThrowsAndPreservesState() async throws {
-        let recorder = StateRecorder<PlayerState>()
+        let recorder = StateSequenceRecorder<PlayerState>()
         let machine = TransitionDrivenStateMachine<PlayerTransition>(
             initial: .stopped,
             hook: { recorder.record($0) }
@@ -45,7 +45,7 @@ final class TransitionDrivenStateMachineTests: XCTestCase {
     }
 
     func testEffectFailureThrowsAndPreservesState() async throws {
-        let recorder = StateRecorder<FailingState>()
+        let recorder = StateSequenceRecorder<FailingState>()
         let machine = TransitionDrivenStateMachine<FailingTransition>(
             initial: .idle,
             hook: { recorder.record($0) }
@@ -72,7 +72,7 @@ final class TransitionDrivenStateMachineTests: XCTestCase {
     }
 
     func testCancellationErrorPropagatesWithoutWrapping() async throws {
-        let recorder = StateRecorder<CancellationState>()
+        let recorder = StateSequenceRecorder<CancellationState>()
         let machine = TransitionDrivenStateMachine<CancellationTransition>(
             initial: .idle,
             hook: { recorder.record($0) }
@@ -93,7 +93,7 @@ final class TransitionDrivenStateMachineTests: XCTestCase {
     }
 
     func testFollowUpActionDispatchesNextTransition() async throws {
-        let recorder = StateRecorder<FollowUpSuccessState>()
+        let recorder = StateSequenceRecorder<FollowUpSuccessState>()
         let machine = TransitionDrivenStateMachine<FollowUpSuccessTransition>(
             initial: .idle,
             hook: { recorder.record($0) }
@@ -106,8 +106,41 @@ final class TransitionDrivenStateMachineTests: XCTestCase {
         XCTAssertEqual(recorder.snapshot, [.idle, .loading, .ready])
     }
 
+    func testTransitionRecorderCapturesCommittedTransitionsAndFollowUpActions() async throws {
+        let recorder = TransitionRecorder<FollowUpSuccessTransition>()
+        let machine = TransitionDrivenStateMachine<FollowUpSuccessTransition>(
+            initial: .idle,
+            transitionRecorder: recorder
+        )
+
+        try await machine.dispatch(.start)
+
+        XCTAssertEqual(recorder.actions, [.start, .finish])
+        XCTAssertEqual(recorder.transitions, [.idle_start, .loading_finish])
+        XCTAssertEqual(recorder.followUpActions, [.finish])
+        XCTAssertEqual(recorder.stateSequence, [.idle, .loading, .ready])
+        XCTAssertEqual(
+            recorder.snapshot,
+            [
+                TransitionRecord(
+                    action: .start,
+                    transition: .idle_start,
+                    fromState: .idle,
+                    toState: .loading,
+                    followUpAction: .finish
+                ),
+                TransitionRecord(
+                    action: .finish,
+                    transition: .loading_finish,
+                    fromState: .loading,
+                    toState: .ready
+                )
+            ]
+        )
+    }
+
     func testFollowUpFailureDoesNotRollbackCommittedTransition() async throws {
-        let recorder = StateRecorder<FollowUpFailureState>()
+        let recorder = StateSequenceRecorder<FollowUpFailureState>()
         let machine = TransitionDrivenStateMachine<FollowUpFailureTransition>(
             initial: .idle,
             hook: { recorder.record($0) }
@@ -131,6 +164,40 @@ final class TransitionDrivenStateMachineTests: XCTestCase {
         let finalState = await machine.state
         XCTAssertEqual(finalState, .loading)
         XCTAssertEqual(recorder.snapshot, [.idle, .loading])
+    }
+
+    func testTransitionRecorderSkipsFailedTransitions() async throws {
+        let recorder = TransitionRecorder<FollowUpFailureTransition>()
+        let machine = TransitionDrivenStateMachine<FollowUpFailureTransition>(
+            initial: .idle,
+            transitionRecorder: recorder
+        )
+
+        do {
+            try await machine.dispatch(.start)
+            XCTFail("Expected follow-up effect failure")
+        } catch let error as TransitionDispatchError<FollowUpFailureTransition> {
+            switch error {
+            case let .effectFailed(transition, message):
+                XCTAssertEqual(transition, .loading_finish)
+                XCTAssertFalse(message.isEmpty)
+            default:
+                XCTFail("Unexpected error: \(error)")
+            }
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+
+        XCTAssertEqual(recorder.snapshot, [
+            TransitionRecord(
+                action: .start,
+                transition: .idle_start,
+                fromState: .idle,
+                toState: .loading,
+                followUpAction: .finish
+            )
+        ])
+        XCTAssertEqual(recorder.stateSequence, [.idle, .loading])
     }
 
     func testPlayerExampleCanSwapUseCaseDependency() async throws {
@@ -203,23 +270,6 @@ final class TransitionDrivenStateMachineTests: XCTestCase {
         let secondCalls = await secondUseCase.calls
         XCTAssertEqual(firstCalls, [])
         XCTAssertEqual(secondCalls, [.play])
-    }
-}
-
-private final class StateRecorder<State: Sendable>: @unchecked Sendable {
-    private let lock = NSLock()
-    private var values: [State] = []
-
-    func record(_ state: State) {
-        lock.lock()
-        values.append(state)
-        lock.unlock()
-    }
-
-    var snapshot: [State] {
-        lock.lock()
-        defer { lock.unlock() }
-        return values
     }
 }
 

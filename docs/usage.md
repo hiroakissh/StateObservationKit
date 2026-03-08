@@ -165,6 +165,13 @@ final class TaskScreenModel {
 - ScreenModel が machine を保持する場合、`ObservationStateMachineType` を満たす型を init 境界で受けると、production では `ObservationDrivenStateMachine`、tests / previews では `ObservationDrivenStateMachineMock` を同じ構造で差し替えられます。
 - `ObservationDrivenStateMachineMock` は `dispatch(_:)` / `send(_:)` の API 形状を合わせた同期 test double です。状態確認や preview には向きますが、queue の順序保証そのものを証明する用途には real machine を使ってください。
 
+### transition recorder と state sequence testing
+
+- `TransitionDrivenStateMachine` で commit 済みの履歴を追いたい場合は、init 時に `TransitionRecorder` を渡します。`actions`、`transitions`、`stateSequence` から、成功した遷移だけを順序付きで検証できます。
+- `TransitionRecorder` は invalid transition や effect failure を記録しません。失敗を含むテストでも、確定済みの state sequence だけをそのままアサートできます。
+- 単純に state の並びだけを残したい場合は `StateSequenceRecorder` を使います。`TransitionDrivenStateMachine` では `hook` と組み合わせられ、`ObservationDrivenStateMachine` や ScreenModel のテストでは `send(_:)` の戻り値や公開 state を記録する用途に向きます。
+- `ObservationDrivenStateMachineMock.receivedActions` と `StateSequenceRecorder` を組み合わせると、入力列と状態列を分離して検証できます。queue 順序そのものを証明したいときだけ real machine を選んでください。
+
 ## 3. UseCase で副作用を扱う
 
 ```swift
