@@ -2,53 +2,82 @@
 
 [日本語](README.ja.md) | [Roadmap](ROADMAP.md) | [ロードマップ](ROADMAP.ja.md) | [Architecture](docs/architecture.md) | [アーキテクチャ](docs/architecture.ja.md)
 
-StateObservationKit is a lightweight state-machine toolkit for building state-driven application architecture in SwiftUI. It combines Swift Concurrency and SwiftUI Observation so that transitions stay explicit, side effects stay controlled, and UI integration stays natural.
+StateObservationKit is a lightweight architecture foundation for SwiftUI applications. Instead of shaping application logic around large ViewModels or heavy frameworks, it helps you make **architecture executable in code through explicit state transitions**.
 
-## Positioning: Why This Instead of Another Architecture Framework?
+Design the structure once, then keep the same structure in implementation.
+That is the core promise of StateObservationKit.
 
-StateObservationKit is not trying to be a full replacement for every opinionated ecosystem.
-Its concrete focus is:
+## README Narrative Order (Philosophy -> Diagram -> Example -> Adoption)
 
-- **Observation-first SwiftUI architecture**
-- **Explicit state transitions with small surface area**
-- **Application-layer orchestration without framework lock-in**
+This README is organized in the following order:
 
-In practice, this package aims to replace ad-hoc **MVVM + mutable ViewModel sprawl** with a state-machine model that still feels native in SwiftUI.
+1. Philosophy (why this is needed)
+2. Diagram (how responsibilities are separated)
+3. Concrete examples (how to write it)
+4. Adoption guidance (when this fits your team)
 
-### Practical Comparison
+## The Problem
 
-| Approach | Common pain point | StateObservationKit response |
-| --- | --- | --- |
-| MVVM | State and business rules leak across many mutable properties. | Keep behavior in explicit `State + Action -> Transition` definitions. |
-| Redux-style frameworks | Boilerplate grows as architecture scales. | Keep API intentionally small and centered on transitions/reducers. |
-| Full-stack architecture frameworks | Strong ecosystem, but often heavy for small to medium apps. | Adopt only the state-machine core and integrate boundaries gradually. |
+In many SwiftUI projects, architecture gradually collapses over time.
 
-If your team wants predictable state transitions and Observation-native SwiftUI integration **without adopting a large framework all at once**, this package is designed for that gap.
+| Approach | Common issue |
+| --- | --- |
+| MVVM | Responsibilities accumulate in ViewModels, and state + business rules become entangled |
+| Redux-style | Boilerplate tends to grow with scale |
+| Full-stack frameworks | Powerful, but often heavy for small-to-medium teams and apps |
 
-## Vision
+As a result, architecture stays in diagrams while implementation drifts elsewhere.
+StateObservationKit is designed to close that gap.
 
-StateObservationKit aims to make state transitions the primary mechanism for application behavior.
+## The Goal
 
-Instead of spreading business rules across flags, callbacks, and ad-hoc ViewModels, the package encourages a simple model:
+The goal is simple:
+
+> **Architecture should be executable.**
+
+With the current API, behavior is modeled as:
 
 ```text
-Current State + Intent
-          ↓
-      Transition
-          ↓
-      Next State
+State + Action
+    ↓
+Transition
+    ↓
+Next State
 ```
 
-In the current API, the architectural idea of an `Intent` is represented by `Action`.
-In this document, `Intent` refers to the architecture concept, while code examples use `Action` / `ActionType` for the current public API.
+We still use `Intent` as an architectural concept, but public API guidance prioritizes `Action` / `ActionType`.
 
 ## Core Philosophy
 
-- State is the source of truth.
-- Transitions should be explicit and inspectable.
-- State machines belong to the Application layer and coordinate UseCases.
-- SwiftUI ergonomics should feel natural with Observation and `@Bindable`.
-- The package should remain lighter and simpler than full architecture frameworks.
+- State is the source of truth
+- Transitions should be explicit and inspectable
+- State machines belong to the Application layer and coordinate UseCases
+- SwiftUI ergonomics should feel natural with Observation and `@Bindable`
+- The package should remain lighter and simpler than full architecture frameworks
+
+## Architecture Overview
+
+```text
+SwiftUI View
+   ↓
+ScreenModel (optional)
+   ↓
+StateMachine
+   ↓
+UseCase / Domain
+   ↓
+Infrastructure
+```
+
+Responsibility split:
+
+| Layer | Responsibility |
+| --- | --- |
+| View | UI rendering |
+| ScreenModel | Coordinate UI input and aggregate Action sending |
+| StateMachine | State transitions and flow control |
+| UseCase | Domain logic execution |
+| Infrastructure | External I/O implementations |
 
 ## Layer Placement
 
@@ -62,21 +91,109 @@ UseCase / Domain
 Infrastructure
 ```
 
-### SwiftUI Flow (recommended)
+StateObservationKit is intended for the Application layer. State changes must go through machine APIs (`dispatch(_:)` / `send(_:)`), while concrete infrastructure dependencies stay behind UseCase/Environment boundaries.
 
-```text
-SwiftUI View
-   ↓ bind / send
-Screen Model (optional)
-   ↓ delegates intents as Action
-StateMachine (Application layer)
-   ↓ calls abstractions
-UseCase / Domain
-   ↓ uses concrete implementations
-Infrastructure
+## Example: Avoid Large ViewModels, Make Transitions Explicit
+
+A method-collection ViewModel shape can hide the actual system behavior:
+
+```swift
+final class PlayerViewModel {
+    func play() { /* ... */ }
+    func pause() { /* ... */ }
+    func stop() { /* ... */ }
+}
 ```
 
-StateObservationKit is intended to live in the Application layer. It owns flow control and state changes, while side effects and external dependencies stay behind UseCases or other boundaries.
+StateObservationKit instead encourages explicit state and action modeling:
+
+```swift
+enum PlayerState: StateType {
+    case idle
+    case playing
+    case paused
+}
+
+enum PlayerAction: ActionType {
+    case play
+    case pause
+    case stop
+}
+```
+
+```text
+idle    --play-->  playing
+playing --pause-> paused
+paused  --play-->  playing
+```
+
+This makes behavior reviewable, testable, and easier to evolve safely.
+
+## Lightweight Alternative
+
+StateObservationKit provides a minimal architecture foundation with:
+
+- Explicit state transitions
+- Architecture-first implementation flow
+- Observation-native SwiftUI integration
+
+You can adopt it incrementally without heavy framework ceremony.
+
+## When This Is a Good Fit
+
+StateObservationKit is especially useful when:
+
+- You want architecture intent to stay visible in code
+- Your app has meaningful state transitions
+- You want to avoid large mutable ViewModels
+- You want something lighter than a full-stack framework
+
+## Sample App Strategy (Pre-article Foundation)
+
+To support adoption decisions, we plan sample apps as first-class onboarding assets.
+
+### 1. TodoApp (highest priority)
+
+- Goal: shortest path to understand `Action -> Transition -> State`
+- Include:
+  - add / complete / delete base transitions
+  - filter switching (`all / active / completed`)
+  - ScreenModel as input boundary, machine focused on transitions
+
+### 2. ChatApp
+
+- Goal: show async events and ordering guarantees
+- Include:
+  - sending / sent / failed state modeling
+  - follow-up action and retry flow
+  - tests for invalid transitions and effect failures
+
+### 3. PlayerApp
+
+- Goal: project explicit transitions into media-control UI
+- Include:
+  - `idle / playing / paused` transitions
+  - button availability driven by `canSend(_:)`
+  - `@Bindable` + projection for simpler View code
+
+### Shared sample principles
+
+- Prioritize recommended architecture, not just runnable demos
+- Do not mutate state from View directly; go through machine APIs
+- Include deterministic tests using `ObservationDrivenStateMachineMock`
+
+## Current Status And Reading Order
+
+StateObservationKit is being realigned toward the roadmap and architecture documents. That means some documentation describes the target direction while the current implementation still reflects an earlier API shape.
+
+Use this reading order when you need to decide what to trust:
+
+1. `ROADMAP.md` for project direction and target architecture
+2. `docs/architecture.md` for design boundaries and dependency direction
+3. This README for the current public API contract
+4. Inline type documentation and tests for current runtime behavior
+
+If the roadmap and current implementation differ, treat that gap as an active migration target, not as a documentation mistake.
 
 ## What the Package Provides
 
@@ -96,19 +213,6 @@ StateObservationKit is intended to live in the Application layer. It owns flow c
 | Intent | `ActionType` | Represents user or system input |
 | Transition | `TransitionType` | Defines a meaningful state change and its optional effect |
 | Machine | `TransitionDrivenStateMachine` / `ObservationDrivenStateMachine` | Interprets input, executes transitions, and exposes state |
-
-## Current Status And Reading Order
-
-StateObservationKit is being realigned toward the roadmap and architecture documents. That means some documentation describes the target direction while the current implementation still reflects an earlier API shape.
-
-Use this reading order when you need to decide what to trust:
-
-1. `ROADMAP.md` for project direction and target architecture
-2. `docs/architecture.md` for design boundaries and dependency direction
-3. This README for the current public API contract
-4. Inline type documentation and tests for current runtime behavior
-
-If the roadmap and current implementation differ, treat that gap as an active migration target, not as a documentation mistake.
 
 ## Current Machine Contract
 

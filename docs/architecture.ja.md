@@ -139,6 +139,25 @@ StateObservationKit は、プラットフォームが許す範囲で SwiftUI-fir
 
 目標は、名前だけ変えた ViewModel パターンを作ることではありません。View が state を直接観測でき、明示的な入力を受け付ける Machine を自然に扱えるようにすることです。
 
+## オンボーディング導線とサンプル構成
+
+思想型 OSS として、文書は次の順で理解できることを重視します。
+
+1. 思想（なぜ必要か）
+2. 図（どう責務分離するか）
+3. 具体例（どう遷移を表現するか）
+4. 導入理由（なぜこのトレードオフか）
+
+README と architecture 文書はこの導線で整合し、新規利用者が概念とコードを対応づけやすい状態を保ちます。
+
+サンプルアプリは機能量よりも「推奨アーキテクチャを教える構成」を優先します。
+
+- TodoApp: 基本遷移モデルと入力境界
+- ChatApp: 非同期 effect、順序保証、失敗ハンドリング
+- PlayerApp: `canSend(_:)`、projection、SwiftUI ergonomics
+
+全サンプルで依存方向（`View -> StateMachine -> UseCase / Domain -> Infrastructure`）を明示し、View 層からの直接 state mutation は避けます。
+
 ## このプロジェクトが避けるもの
 
 StateObservationKit は、意図的に次を避けます。

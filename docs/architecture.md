@@ -139,6 +139,25 @@ StateObservationKit is intentionally SwiftUI-first where the platform allows it:
 
 The goal is not to recreate ViewModel-heavy patterns under a different name. The goal is to let the View observe a machine that exposes state directly and accepts explicit input.
 
+## Onboarding Narrative and Sample Composition
+
+As a philosophy-driven OSS project, docs should explain the architecture in this order:
+
+1. Philosophy (why)
+2. Diagram (how responsibilities are split)
+3. Example (how transitions are expressed)
+4. Adoption reason (why this tradeoff)
+
+README and architecture docs are expected to stay consistent with this narrative so new adopters can map concepts to code quickly.
+
+For sample applications, prioritize architecture-teaching structure over feature volume:
+
+- TodoApp: baseline transition modeling and screen/input boundaries
+- ChatApp: async effects, ordering guarantees, and failure handling
+- PlayerApp: `canSend(_:)`, projection, and SwiftUI ergonomics
+
+Across all samples, keep dependency direction explicit (`View -> StateMachine -> UseCase / Domain -> Infrastructure`) and avoid direct state mutation from the View layer.
+
 ## What the Project Avoids
 
 StateObservationKit intentionally avoids:
