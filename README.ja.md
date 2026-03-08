@@ -4,6 +4,27 @@
 
 StateObservationKit は、SwiftUI 向けの状態駆動アプリケーションアーキテクチャを構築するための軽量なステートマシンツールキットです。Swift Concurrency と SwiftUI Observation を組み合わせ、状態遷移を明示的にし、副作用を制御しやすくし、UI との接続を自然に保つことを目指しています。
 
+## ポジショニング: なぜ別のアーキテクチャフレームワークではなくこれなのか
+
+StateObservationKit は、あらゆる思想を含む巨大なエコシステムの完全な置き換えを目指していません。
+このパッケージの焦点は次の 3 点です。
+
+- **Observation-first な SwiftUI アーキテクチャ**
+- **小さな API 面で明示的な状態遷移を扱うこと**
+- **フレームワークにロックインしない Application layer のオーケストレーション**
+
+実運用では、場当たり的に増殖しやすい **MVVM + 可変 ViewModel** を、SwiftUI に自然に馴染むステートマシンモデルへ置き換えることを狙っています。
+
+### 実務的な比較
+
+| アプローチ | よくある課題 | StateObservationKit のアプローチ |
+| --- | --- | --- |
+| MVVM | mutable なプロパティに状態と業務ルールが分散しやすい。 | 振る舞いを `State + Action -> Transition` として明示的に定義する。 |
+| Redux 系フレームワーク | スケールに伴ってボイラープレートが増えやすい。 | API を意図的に小さく保ち、遷移/Reducer を中心に構成する。 |
+| フルスタック系フレームワーク | エコシステムは強力だが、小〜中規模では重くなりやすい。 | ステートマシンのコアだけ先に導入し、境界を段階的に統合する。 |
+
+「予測可能な状態遷移」と「Observation-native な SwiftUI 統合」を、巨大フレームワークの一括導入なしで得たいチームに向けた選択肢です。
+
 ## Vision
 
 StateObservationKit は、アプリケーションの振る舞いを状態遷移で制御することを目的としています。
@@ -38,6 +59,20 @@ Application State Machine
  ↓
 UseCase / Domain
  ↓
+Infrastructure
+```
+
+### SwiftUI フロー（推奨）
+
+```text
+SwiftUI View
+   ↓ bind / send
+Screen Model（任意）
+   ↓ Action として Intent を委譲
+StateMachine（Application layer）
+   ↓ 抽象境界を呼び出す
+UseCase / Domain
+   ↓ 具体実装を利用
 Infrastructure
 ```
 
