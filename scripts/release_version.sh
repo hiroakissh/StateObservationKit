@@ -22,7 +22,7 @@ validate_version() {
     return 1
   fi
 
-  if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+  if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$ ]]; then
     echo "VERSION must use semantic version format MAJOR.MINOR.PATCH or MAJOR.MINOR.PATCH-prerelease: $version" >&2
     return 1
   fi

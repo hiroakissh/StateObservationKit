@@ -47,7 +47,7 @@ StateObservationKit への貢献を歓迎します。本ガイドでは、Pull R
 - release train の途中で追加機能や修正を行う場合は、`feature/<topic>`、`fix/<topic>`、`docs/<topic>` のような通常ブランチ名で個別ブランチを切り、release train branch へ戻してください。`feature/release-...` は release train 専用です。
 - `main` には `develop` からのみ merge し、`main` は release branch として扱います。
 - `feature/release-*` への push / PR でも `ci.yml` と `format.yml` が走るため、release train 内の統合作業でも検証できます。
-- `main` へ merge されたとき、`VERSION` が前回の `main` から更新されていれば `.github/workflows/release-tag.yml` が同名 tag を自動作成します。
+- `main` へ PR merge されたとき、`VERSION` が前回の `main` から更新されているか、`VERSION` 導入直後で同名 tag が未作成なら `.github/workflows/release-tag.yml` が同名 tag を自動作成します。
 - `VERSION` は `MAJOR.MINOR.PATCH` だけでなく `MAJOR.MINOR.PATCH-prerelease` も使えます。beta の場合は `1.4.0-beta.1` のように表現してください。
 - 詳細な運用手順は `docs/release_workflow.ja.md` と `docs/release_workflow.md` を参照してください。
 

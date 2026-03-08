@@ -25,6 +25,49 @@ jobs:
       - name: Validate VERSION metadata
         run: ./scripts/release_version.sh validate
 
+      - name: Require a merged pull request into main
+        id: associated-pr
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const result = await github.graphql(
+              `query($owner: String!, $repo: String!, $oid: GitObjectID!) {
+                repository(owner: $owner, name: $repo) {
+                  object(oid: $oid) {
+                    ... on Commit {
+                      associatedPullRequests(first: 10) {
+                        nodes {
+                          number
+                          mergedAt
+                          baseRefName
+                          headRefName
+                        }
+                      }
+                    }
+                  }
+                }
+              }`,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                oid: context.sha,
+              }
+            );
+
+            const prs = result.repository.object?.associatedPullRequests?.nodes ?? [];
+            const mergedMainPr = prs.find((pr) => pr.mergedAt && pr.baseRefName === "main");
+
+            if (!mergedMainPr) {
+              core.setFailed(
+                `No merged pull request into main is associated with ${context.sha}. Refusing to create a release tag from a direct push.`
+              );
+              return;
+            }
+
+            core.info(
+              `Release tag creation is allowed for PR #${mergedMainPr.number} from ${mergedMainPr.headRefName}.`
+            );
+
       - name: Determine release version delta
         id: version
         shell: bash
@@ -35,8 +78,14 @@ jobs:
           echo "current=$current_version" >> "$GITHUB_OUTPUT"
 
           if [[ -z "$previous_version" ]]; then
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-            echo "reason=bootstrap" >> "$GITHUB_OUTPUT"
+            if git rev-parse -q --verify "refs/tags/$current_version" >/dev/null; then
+              echo "changed=false" >> "$GITHUB_OUTPUT"
+              echo "reason=bootstrap-already-tagged" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "reason=bootstrap-new-version" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 

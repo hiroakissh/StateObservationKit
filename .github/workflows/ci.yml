@@ -44,9 +44,16 @@ jobs:
         if: github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/release-')
         run: ./scripts/release_version.sh match-branch "${{ github.head_ref }}"
 
+      - name: Validate target release branch version alignment before merge
+        if: github.event_name == 'pull_request' && startsWith(github.base_ref, 'feature/release-')
+        run: ./scripts/release_version.sh match-branch "${{ github.base_ref }}"
+
       - name: Validate release branch version alignment on push
         if: github.event_name == 'push' && startsWith(github.ref_name, 'feature/release-')
         run: ./scripts/release_version.sh match-branch "${{ github.ref_name }}"
+
+      - name: Run release governance script tests
+        run: make test-release-governance
 
   swiftpm:
     name: SwiftPM Build and Test

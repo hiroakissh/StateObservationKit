@@ -10,7 +10,7 @@ StateObservationKit separates `develop` as the integration branch and `main` as 
 | `feature/release-x.y.z` | stable release train branch | Cut from `develop` for a stable train and set `VERSION=x.y.z`. |
 | `feature/release-x.y.z-beta.n` | prerelease train branch | Use for beta or prerelease trains and set `VERSION=x.y.z-beta.n`. |
 | `feature/<topic>` / `fix/<topic>` / `docs/<topic>` | work branch | Regular work branches that can be cut from a release train branch. Do not reuse the `feature/release-...` prefix for them. |
-| `main` | release branch | Accept only pull request merges from `develop`, then publish tags after the merge. |
+| `main` | release branch | Accept only pull request merges from `develop`, and let the workflow release only pushes that are tied to a merged pull request. |
 
 ## Branch Roles
 
@@ -18,7 +18,7 @@ StateObservationKit separates `develop` as the integration branch and `main` as 
 | --- | --- | --- |
 | `develop` | default branch / integration branch | The day-to-day baseline. `ci.yml` and `format.yml` run for pushes and pull requests targeting this branch, and this is the final validation stage. |
 | `feature/release-x.y.z` / `feature/release-x.y.z-beta.n` | release train branch | Create it from `develop` and keep the branch suffix aligned with `VERSION`. `ci.yml` and `format.yml` also run for pull requests into these branches and for pushes after merges, including version-alignment checks. |
-| `main` | release branch | Accept only pull request merges from `develop`; after merge, `release-tag.yml` creates the release tag. |
+| `main` | release branch | Accept only pull request merges from `develop`; after merge, `release-tag.yml` creates tags only for commits tied to a merged pull request. |
 
 Existing tags use the `0.3.1` style without a `v` prefix, so this workflow keeps that format.
 
@@ -27,7 +27,7 @@ Existing tags use the `0.3.1` style without a `v` prefix, so this workflow keeps
 - The release version lives in the repository-root `VERSION` file.
 - `VERSION` must use `MAJOR.MINOR.PATCH` or `MAJOR.MINOR.PATCH-prerelease`.
 - `feature/release-x.y.z` and `feature/release-x.y.z-beta.n` branches must keep the branch suffix aligned with `VERSION`.
-- A merge into `main` creates a new annotated tag only when `VERSION` differs from the previous `main` revision.
+- A merge into `main` creates a new annotated tag when `VERSION` differs from the previous `main` revision, or when `VERSION` is newly introduced and the same tag does not already exist.
 - Prerelease labels such as `1.4.0-beta.1` are valid and are published as-is.
 
 ## Recommended Flow
@@ -42,7 +42,7 @@ Existing tags use the `0.3.1` style without a `v` prefix, so this workflow keeps
 ## Beta / Pre-release Outlook
 
 - A prerelease `VERSION` works with the same automation path.
-- For example, merging `VERSION=1.4.0-beta.1` into `main` creates the `1.4.0-beta.1` tag.
+- For example, pull-request merging `VERSION=1.4.0-beta.1` into `main` creates the `1.4.0-beta.1` tag.
 - To move from beta to stable, bump `VERSION` to `1.4.0` and repeat the `develop -> main` release step.
 - If you later need a separate beta publishing channel, keeping prereleases in SemVer form now makes it straightforward to split that logic into a dedicated workflow.
 
