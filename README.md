@@ -87,6 +87,7 @@ If the roadmap and current implementation differ, treat that gap as an active mi
 
 - `dispatch(_:)` returns immediately and schedules reducer execution asynchronously.
 - `send(_:)` enqueues work on the same ordered queue and returns after the resulting state has been published.
+- `canSend(_:)` returns a conservative UI-facing availability check based on the published state and whether reducer work is still pending.
 - Reducer execution is serialized on an ordered internal queue, so `dispatch(_:)` and `send(_:)` are applied in call order.
 - `state` is updated on the main actor after each reducer run completes.
 - `dispatch(_:)` remains the fire-and-forget API; use `send(_:)` when tests or orchestration code need an explicit completion point.

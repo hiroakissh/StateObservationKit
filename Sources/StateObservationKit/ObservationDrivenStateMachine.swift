@@ -11,6 +11,7 @@ import Observation
 /// `dispatch(_:)` is fire-and-forget, while `send(_:)` awaits the committed state on the same ordered queue.
 public final class ObservationDrivenStateMachine<State: Equatable & Sendable, Action: Sendable>: ObservationStateMachineType {
     public private(set) var state: State
+    private var pendingActionCount = 0
 #if canImport(Observation)
     @ObservationIgnored
 #endif
@@ -33,7 +34,7 @@ public final class ObservationDrivenStateMachine<State: Equatable & Sendable, Ac
     }
 
     public func canSend(_ action: Action) -> Bool {
-        availability(state, action)
+        pendingActionCount == 0 && availability(state, action)
     }
 
     /// Schedules reducer execution and returns immediately.
@@ -51,6 +52,7 @@ public final class ObservationDrivenStateMachine<State: Equatable & Sendable, Ac
     private func enqueue(_ action: Action) -> Task<State, Never> {
         let previousCommit = pendingCommit
         let reducerExecutor = self.reducerExecutor
+        pendingActionCount += 1
 
         let task = Task<State, Never> { [weak self] in
             _ = await previousCommit?.value
@@ -59,6 +61,9 @@ public final class ObservationDrivenStateMachine<State: Equatable & Sendable, Ac
 
             await MainActor.run {
                 self?.state = newState
+                if let self {
+                    self.pendingActionCount -= 1
+                }
             }
 
             return newState

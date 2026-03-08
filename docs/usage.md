@@ -149,6 +149,7 @@ final class TaskScreenModel {
 
 - `ObservationDrivenStateMachine` には pure reducer を渡し、状態遷移だけを閉じ込めます。
 - `canSend(_:)` を公開しておくと、View は `disabled` やナビゲーション制御を state から直接導けます。
+- `canSend(_:)` は pending reducer がある間は保守的に `false` を返すため、実行中 transition の二重送信を UI 側で避けやすくなります。
 - View からの入力は ScreenModel の `send(_:)` に集約し、副作用の結果は `Result` で受けて follow-up action に変換します。
 - `default` を使わず、状態ごとに受け付ける Action を明示すると、状態追加時に見落としに気付きやすくなります。
 

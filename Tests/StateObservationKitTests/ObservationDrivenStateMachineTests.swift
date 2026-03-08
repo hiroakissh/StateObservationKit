@@ -66,7 +66,7 @@ final class ObservationDrivenStateMachineTests: XCTestCase {
     }
 
     @MainActor
-    func testCanSendReflectsStateAndGuardsQueuedActions() async {
+    func testCanSendReturnsFalseWhilePendingAndGuardsQueuedActions() async {
         let machine: ObservationDrivenStateMachine<AvailabilityState, AvailabilityAction> = ObservationDrivenStateMachine(
             initial: AvailabilityState(phase: .idle, acceptedStarts: 0),
             canSend: { state, action in
@@ -88,6 +88,7 @@ final class ObservationDrivenStateMachineTests: XCTestCase {
         XCTAssertTrue(machine.canSend(.start))
 
         machine.dispatch(.start)
+        XCTAssertFalse(machine.canSend(.start))
         let committedState = await machine.send(.start)
 
         XCTAssertEqual(

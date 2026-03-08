@@ -87,6 +87,7 @@ StateObservationKit は現在、ロードマップとアーキテクチャ文書
 
 - `dispatch(_:)` は即座に戻り、Reducer 実行を非同期にスケジュールします。
 - `send(_:)` は同じ順序付きキューに入力を積み、結果の state が公開されるまで待機します。
+- `canSend(_:)` は公開済み state と pending reducer の有無を見て、UI 向けの保守的な可用性判定を返します。
 - Reducer 実行は内部の順序付きキューで逐次化されるため、`dispatch(_:)` と `send(_:)` は呼び出し順に適用されます。
 - `state` は各 Reducer 実行が完了したあとに MainActor 上で更新されます。
 - `dispatch(_:)` は fire-and-forget 用の API として残し、テストや orchestration で完了点が必要な場合は `send(_:)` を使います。
