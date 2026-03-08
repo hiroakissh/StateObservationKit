@@ -2,7 +2,7 @@ name: Swift Tests
 
 on:
   push:
-    branches: [ "main", "feature/*" ]
+    branches: [ "main", "feature/*", "codex/*" ]
   pull_request:
     branches: [ "main" ]
 
@@ -18,5 +18,5 @@ jobs:
         with:
           swift-version: "6.1.0"
 
-      - name: Run tests
-        run: swift test
+      - name: Run standard validation
+        run: ./scripts/validate.sh

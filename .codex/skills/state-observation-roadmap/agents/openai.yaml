@@ -1,0 +1,4 @@
+interface:
+  display_name: "StateObservation Roadmap"
+  short_description: "Plan and review this repo against its roadmap"
+  default_prompt: "Use $state-observation-roadmap to plan, review, or implement StateObservationKit changes against this repository's roadmap and architecture docs."

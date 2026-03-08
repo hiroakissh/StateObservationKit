@@ -29,22 +29,44 @@ private enum DraftAction: Equatable, Sendable {
 }
 
 final class ObservationDrivenStateMachineTests: XCTestCase {
+    func testAsyncResultCatchingReturnsSuccess() async {
+        let result = await Result<Int, Error>.catching { 42 }
+
+        switch result {
+        case .success(let value):
+            XCTAssertEqual(value, 42)
+        case .failure(let error):
+            XCTFail("Expected success, got failure: \(error)")
+        }
+    }
+
+    func testAsyncResultCatchingReturnsFailure() async {
+        let result = await Result<Void, Error>.catching {
+            throw SampleAsyncResultError.example
+        }
+
+        switch result {
+        case .success:
+            XCTFail("Expected failure")
+        case .failure(let error):
+            XCTAssertTrue(error is SampleAsyncResultError)
+        }
+    }
+
     @MainActor
-    func testReducerFlow() async throws {
+    func testSendWaitsForCommittedState() async {
         let machine = ObservationDrivenStateMachine(initial: "idle") { state, action in
             if action == "start" { state = "running" }
         }
 
         XCTAssertEqual(machine.state, "idle")
-        machine.send("start")
-
-        try await assertEventually {
-            machine.state == "running"
-        }
+        let committedState = await machine.send("start")
+        XCTAssertEqual(committedState, "running")
+        XCTAssertEqual(machine.state, "running")
     }
 
     @MainActor
-    func testCanSendReflectsStateAndGuardsQueuedActions() async throws {
+    func testCanSendReflectsStateAndGuardsQueuedActions() async {
         let machine: ObservationDrivenStateMachine<AvailabilityState, AvailabilityAction> = ObservationDrivenStateMachine(
             initial: AvailabilityState(phase: .idle, acceptedStarts: 0),
             canSend: { state, action in
@@ -65,12 +87,14 @@ final class ObservationDrivenStateMachineTests: XCTestCase {
 
         XCTAssertTrue(machine.canSend(.start))
 
-        machine.send(.start)
-        machine.send(.start)
+        machine.dispatch(.start)
+        let committedState = await machine.send(.start)
 
-        try await assertEventually {
-            machine.state == AvailabilityState(phase: .running, acceptedStarts: 1)
-        }
+        XCTAssertEqual(
+            committedState,
+            AvailabilityState(phase: .running, acceptedStarts: 1)
+        )
+        XCTAssertEqual(machine.state, committedState)
         XCTAssertFalse(machine.canSend(.start))
     }
 
@@ -97,9 +121,22 @@ final class ObservationDrivenStateMachineTests: XCTestCase {
         XCTAssertEqual(mock.receivedActions, ["start", "start"])
     }
 
+    @MainActor
+    func testDispatchAndSendShareTheSameOrderedQueue() async {
+        let machine = ObservationDrivenStateMachine(initial: [String]()) { state, action in
+            state.append(action)
+        }
+
+        machine.dispatch("first")
+        let committedState = await machine.send("second")
+
+        XCTAssertEqual(committedState, ["first", "second"])
+        XCTAssertEqual(machine.state, ["first", "second"])
+    }
+
 #if canImport(SwiftUI)
     @MainActor
-    func testBindingDispatchesActionAndProjectionDerivesViewState() {
+    func testBindingDispatchesActionAndProjectionDerivesViewState() async {
         let mock: ObservationDrivenStateMachineMock<DraftState, DraftAction> = ObservationDrivenStateMachineMock(
             initial: DraftState(title: "", isSaving: false),
             canSend: { state, action in
@@ -130,9 +167,10 @@ final class ObservationDrivenStateMachineTests: XCTestCase {
         }
         XCTAssertEqual(viewState, DraftViewState(title: "Ship Q3", canSave: true))
 
-        mock.send(.saveTapped)
+        let committedState = await mock.send(.saveTapped)
 
-        XCTAssertTrue(mock.state.isSaving)
+        XCTAssertEqual(committedState, DraftState(title: "Ship Q3", isSaving: true))
+        XCTAssertEqual(mock.state, committedState)
         XCTAssertEqual(
             mock.receivedActions,
             [DraftAction.titleChanged("Ship Q3"), .saveTapped]
@@ -140,31 +178,69 @@ final class ObservationDrivenStateMachineTests: XCTestCase {
     }
 #endif
 
+#if canImport(SwiftUI) && canImport(Observation)
     @MainActor
-    private func assertEventually(
-        timeout: Duration = .seconds(1),
-        file: StaticString = #filePath,
-        line: UInt = #line,
-        _ condition: @escaping @MainActor () -> Bool
-    ) async throws {
-        let clock = ContinuousClock()
-        let start = clock.now
-
-        while clock.now - start < timeout {
-            if condition() {
-                return
+    func testPlayerScreenModelCanUseMockThroughProtocolBoundary() {
+        let machine = ObservationDrivenStateMachineMock<PlayerState, PlayerAction>(
+            initial: .idle,
+            canSend: { state, action in
+                switch (state, action) {
+                case (.idle, .play),
+                     (.playing, .pause),
+                     (.playing, .stop),
+                     (.paused, .resume),
+                     (.paused, .stop),
+                     (.stopped, .play):
+                    return true
+                default:
+                    return false
+                }
             }
-
-            try await Task.sleep(for: .milliseconds(10))
+        ) { state, action in
+            switch (state, action) {
+            case (.idle, .play):
+                state = .playing
+            case (.playing, .pause):
+                state = .paused
+            case (.paused, .resume):
+                state = .playing
+            case (.playing, .stop), (.paused, .stop):
+                state = .stopped
+            default:
+                break
+            }
         }
 
-        XCTFail("Condition was not satisfied in time", file: file, line: line)
+        let model = PlayerScreenModel(
+            machine: machine,
+            playerUseCase: NoOpPlayerUseCase()
+        )
+
+        model.send(.play)
+
+        XCTAssertEqual(model.state, .playing)
+        XCTAssertTrue(model.canSend(.pause))
+        XCTAssertEqual(machine.receivedActions, [.play])
     }
+#endif
+}
+
+private enum SampleAsyncResultError: Error {
+    case example
 }
 
 #if canImport(SwiftUI)
 private struct DraftViewState: Equatable {
     let title: String
     let canSave: Bool
+}
+#endif
+
+#if canImport(SwiftUI) && canImport(Observation)
+private actor NoOpPlayerUseCase: PlayerUseCaseProtocol {
+    func play() async throws {}
+    func pause() async throws {}
+    func resume() async throws {}
+    func stop() async throws {}
 }
 #endif

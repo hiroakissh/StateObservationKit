@@ -1,5 +1,108 @@
 import Foundation
 
+public protocol AudioServiceProtocol: Sendable {
+    func play() async throws
+    func pause() async throws
+    func resume() async throws
+    func stop() async throws
+}
+
+public protocol PlayerUseCaseProtocol: Sendable {
+    func play() async throws
+    func pause() async throws
+    func resume() async throws
+    func stop() async throws
+}
+
+public struct PlayerEnvironment: Sendable {
+    public let playerUseCase: any PlayerUseCaseProtocol
+
+    public init(playerUseCase: any PlayerUseCaseProtocol) {
+        self.playerUseCase = playerUseCase
+    }
+
+    public static let live = Self(
+        playerUseCase: PlayerUseCase(audioService: AudioService.shared)
+    )
+}
+
+public actor PlayerUseCase: PlayerUseCaseProtocol {
+    private let audioService: any AudioServiceProtocol
+
+    public init(audioService: any AudioServiceProtocol) {
+        self.audioService = audioService
+    }
+
+    public func play() async throws {
+        try await audioService.play()
+    }
+
+    public func pause() async throws {
+        try await audioService.pause()
+    }
+
+    public func resume() async throws {
+        try await audioService.resume()
+    }
+
+    public func stop() async throws {
+        try await audioService.stop()
+    }
+}
+
+private enum PlayerExampleEnvironmentScope {
+    @TaskLocal static var current: PlayerEnvironment?
+}
+
+private actor PlayerEnvironmentStore {
+    static let shared = PlayerEnvironmentStore(environment: .live)
+
+    private var environment: PlayerEnvironment
+
+    init(environment: PlayerEnvironment) {
+        self.environment = environment
+    }
+
+    func current() -> PlayerEnvironment {
+        environment
+    }
+
+    func replace(with environment: PlayerEnvironment) -> PlayerEnvironment {
+        let previous = self.environment
+        self.environment = environment
+        return previous
+    }
+
+    func reset() {
+        environment = .live
+    }
+}
+
+public func configurePlayerExampleEnvironment(_ environment: PlayerEnvironment) async {
+    _ = await PlayerEnvironmentStore.shared.replace(with: environment)
+}
+
+public func resetPlayerExampleEnvironment() async {
+    await PlayerEnvironmentStore.shared.reset()
+}
+
+public func withPlayerExampleEnvironment<T: Sendable>(
+    _ environment: PlayerEnvironment,
+    operation: @Sendable () async throws -> T
+) async rethrows -> T {
+    try await PlayerExampleEnvironmentScope.$current.withValue(environment) {
+        try await operation()
+    }
+}
+
+private func currentPlayerExampleEnvironment() async -> PlayerEnvironment {
+    if let environment = PlayerExampleEnvironmentScope.current {
+        return environment
+    }
+
+    return await PlayerEnvironmentStore.shared.current()
+}
+
 // MARK: - Domain States
 
 public enum PlayerState: StateType {
@@ -61,22 +164,26 @@ public enum PlayerTransition: TransitionType {
         switch self {
         case .idle_play:
             {
-                try await AudioService.shared.play()
+                let environment = await currentPlayerExampleEnvironment()
+                try await environment.playerUseCase.play()
                 return nil
             }
         case .playing_pause:
             {
-                try await AudioService.shared.pause()
+                let environment = await currentPlayerExampleEnvironment()
+                try await environment.playerUseCase.pause()
                 return nil
             }
         case .paused_resume:
             {
-                try await AudioService.shared.resume()
+                let environment = await currentPlayerExampleEnvironment()
+                try await environment.playerUseCase.resume()
                 return nil
             }
         case .playing_stop, .paused_stop:
             {
-                try await AudioService.shared.stop()
+                let environment = await currentPlayerExampleEnvironment()
+                try await environment.playerUseCase.stop()
                 return nil
             }
         }
@@ -85,7 +192,7 @@ public enum PlayerTransition: TransitionType {
 
 // MARK: - Sample Async Mock Service
 
-public final actor AudioService {
+public actor AudioService: AudioServiceProtocol {
     public static let shared = AudioService()
     public func play() async throws { print("▶️ Playing...") }
     public func pause() async throws { print("⏸ Paused.") }

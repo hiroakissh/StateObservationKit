@@ -132,6 +132,78 @@ final class TransitionDrivenStateMachineTests: XCTestCase {
         XCTAssertEqual(finalState, .loading)
         XCTAssertEqual(recorder.snapshot, [.idle, .loading])
     }
+
+    func testPlayerExampleCanSwapUseCaseDependency() async throws {
+        let useCase = RecordingPlayerUseCase()
+
+        try await withPlayerExampleEnvironment(.init(playerUseCase: useCase)) {
+            let machine = TransitionDrivenStateMachine<PlayerTransition>(initial: .idle)
+            try await machine.dispatch(.play)
+            try await machine.dispatch(.pause)
+        }
+
+        let calls = await useCase.calls
+        XCTAssertEqual(calls, [.play, .pause])
+    }
+
+    func testWithPlayerExampleEnvironmentRestoresPreviousEnvironmentOnError() async {
+        let overriddenUseCase = RecordingPlayerUseCase()
+
+        do {
+            try await withPlayerExampleEnvironment(.init(playerUseCase: overriddenUseCase)) {
+                throw TestFailure.sample
+            }
+            XCTFail("Expected sample failure")
+        } catch TestFailure.sample {
+            // Expected path.
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+
+        let machine = TransitionDrivenStateMachine<PlayerTransition>(initial: .idle)
+        do {
+            try await machine.dispatch(.play)
+        } catch {
+            XCTFail("Expected live environment to be restored, but got error: \(error)")
+        }
+
+        let calls = await overriddenUseCase.calls
+        XCTAssertEqual(calls, [])
+    }
+
+    func testWithPlayerExampleEnvironmentIsolatesConcurrentScopes() async throws {
+        let firstUseCase = RecordingPlayerUseCase()
+        let secondUseCase = RecordingPlayerUseCase()
+        let gate = ScopedPlayerEnvironmentGate()
+
+        let firstTask = Task {
+            await withPlayerExampleEnvironment(.init(playerUseCase: firstUseCase)) {
+                await gate.markFirstScopeEntered()
+                await gate.waitForSecondScopeEntered()
+            }
+            await gate.markFirstScopeExited()
+        }
+
+        await gate.waitForFirstScopeEntered()
+
+        let secondTask = Task {
+            try await withPlayerExampleEnvironment(.init(playerUseCase: secondUseCase)) {
+                await gate.markSecondScopeEntered()
+                await gate.waitForFirstScopeExited()
+
+                let machine = TransitionDrivenStateMachine<PlayerTransition>(initial: .idle)
+                try await machine.dispatch(.play)
+            }
+        }
+
+        await firstTask.value
+        try await secondTask.value
+
+        let firstCalls = await firstUseCase.calls
+        let secondCalls = await secondUseCase.calls
+        XCTAssertEqual(firstCalls, [])
+        XCTAssertEqual(secondCalls, [.play])
+    }
 }
 
 private final class StateRecorder<State: Sendable>: @unchecked Sendable {
@@ -305,4 +377,85 @@ private enum FollowUpFailureTransition: TransitionType {
 
 private enum TestFailure: Error {
     case sample
+}
+
+private actor RecordingPlayerUseCase: PlayerUseCaseProtocol {
+    private(set) var calls: [PlayerCall] = []
+
+    func play() async throws {
+        calls.append(.play)
+    }
+
+    func pause() async throws {
+        calls.append(.pause)
+    }
+
+    func resume() async throws {
+        calls.append(.resume)
+    }
+
+    func stop() async throws {
+        calls.append(.stop)
+    }
+}
+
+private actor ScopedPlayerEnvironmentGate {
+    private var firstScopeEntered = false
+    private var secondScopeEntered = false
+    private var firstScopeExited = false
+
+    private var firstScopeEnteredWaiters: [CheckedContinuation<Void, Never>] = []
+    private var secondScopeEnteredWaiters: [CheckedContinuation<Void, Never>] = []
+    private var firstScopeExitedWaiters: [CheckedContinuation<Void, Never>] = []
+
+    func markFirstScopeEntered() {
+        firstScopeEntered = true
+        resumeAll(&firstScopeEnteredWaiters)
+    }
+
+    func waitForFirstScopeEntered() async {
+        guard !firstScopeEntered else { return }
+        await withCheckedContinuation { continuation in
+            firstScopeEnteredWaiters.append(continuation)
+        }
+    }
+
+    func markSecondScopeEntered() {
+        secondScopeEntered = true
+        resumeAll(&secondScopeEnteredWaiters)
+    }
+
+    func waitForSecondScopeEntered() async {
+        guard !secondScopeEntered else { return }
+        await withCheckedContinuation { continuation in
+            secondScopeEnteredWaiters.append(continuation)
+        }
+    }
+
+    func markFirstScopeExited() {
+        firstScopeExited = true
+        resumeAll(&firstScopeExitedWaiters)
+    }
+
+    func waitForFirstScopeExited() async {
+        guard !firstScopeExited else { return }
+        await withCheckedContinuation { continuation in
+            firstScopeExitedWaiters.append(continuation)
+        }
+    }
+
+    private func resumeAll(_ continuations: inout [CheckedContinuation<Void, Never>]) {
+        let waiters = continuations
+        continuations.removeAll(keepingCapacity: true)
+        for continuation in waiters {
+            continuation.resume()
+        }
+    }
+}
+
+private enum PlayerCall: Equatable {
+    case play
+    case pause
+    case resume
+    case stop
 }

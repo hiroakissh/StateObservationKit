@@ -17,6 +17,7 @@ Current State + Intent
 ```
 
 In the current API, the architectural concept of `Intent` is represented by `Action`.
+In this document, `Intent` is the architecture term, while `Action` / `ActionType` refers to the current public API surface.
 
 | Concept | Current API | Role |
 | --- | --- | --- |
@@ -66,6 +67,23 @@ StateObservationKit does not force one strict Clean Architecture interpretation.
 
 Both machine styles can share the same domain model. The package is intended to let teams choose the amount of structure they need without rewriting the whole application model.
 
+## Current Dispatch Semantics
+
+### `TransitionDrivenStateMachine`
+
+- Resolves a transition from the current `(state, action)` pair or throws `TransitionDispatchError.invalidTransition`.
+- Runs `effect` before committing state.
+- Preserves the current state when `effect` fails.
+- Applies a follow-up `Action` only after the current transition has been committed.
+
+### `ObservationDrivenStateMachine`
+
+- Accepts input through `dispatch(_:)` and returns immediately.
+- `send(_:)` waits for the committed state on the same ordered reducer queue.
+- Serializes reducer execution internally so `dispatch(_:)` and `send(_:)` preserve call order.
+- Publishes the resulting state after each reducer run completes on the main actor.
+- Treat `dispatch(_:)` as fire-and-forget and use `send(_:)` when an explicit completion point is required.
+
 ## Integration Rules
 
 ### 1. Change state through `dispatch(_:)`
@@ -104,6 +122,10 @@ In practice, this can stay lightweight by deriving a view-facing model with `mac
 
 `ObservationStateMachineType` and `ObservationDrivenStateMachineMock` exist so UI and application code can depend on abstractions instead of concrete runtime behavior.
 
+- ScreenModels or application-layer wrappers should accept `Machine: ObservationStateMachineType` at their injection boundary and keep the concrete `ObservationDrivenStateMachine` creation at the edge.
+- `ObservationDrivenStateMachineMock` mirrors the `dispatch(_:)` / `send(_:)` surface, but runs its reducer synchronously for deterministic state assertions.
+- Use the real `ObservationDrivenStateMachine` when validating reducer queue ordering or completion semantics; use the mock for previews, reducer-focused tests, and orchestration tests.
+
 ## SwiftUI Ergonomics
 
 StateObservationKit is intentionally SwiftUI-first where the platform allows it:
@@ -136,5 +158,8 @@ The current architecture establishes the baseline. The roadmap expands it in fou
 - Better Clean Architecture integration and dependency injection
 - Better SwiftUI ergonomics and intent availability
 - Production tooling such as transition recording and debugging utilities
+
+During Q1 stabilization, treat the roadmap as the target direction and the README plus tests as the source for the current public contract.
+If they differ, the gap should be handled as planned migration work.
 
 See [ROADMAP.md](../ROADMAP.md) for the detailed plan.
