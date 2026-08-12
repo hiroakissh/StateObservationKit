@@ -126,6 +126,24 @@ SwiftUI View
 - `ObservationDrivenStateMachineMock` は `dispatch(_:)` / `send(_:)` の表面 API を揃えつつ、Reducer を同期実行して決定的な state assertion を可能にします。
 - Reducer queue の順序保証や completion semantics を検証したい場合は実機の `ObservationDrivenStateMachine` を使い、preview・Reducer 単体テスト・orchestration テストでは mock を使います。
 
+## Observation の観測性
+
+`ObservationDrivenStateMachine` は、状態変更の経路を変えずに Action lifecycle を観測できます。
+
+```text
+enqueued
+   ↓
+started
+   ↓
+committed / rejected
+```
+
+- `ObservationTraceRecorder` は全イベントと commit 済み state sequence を順序付きで保持します。
+- `ObservationTraceLogger` は print、OS unified logging、アプリ側のログ基盤へ接続できます。
+- `ObservationDebugOverlay` は開発時に state、last Action、phase、pending 数を SwiftUI へ表示します。
+
+観測イベントは MainActor 上で reducer queue の完了点と同じ順序で発火します。ログや表示は状態を変更せず、順序保証を壊さない軽量な sink として扱ってください。
+
 ## SwiftUI エルゴノミクス
 
 StateObservationKit は、プラットフォームが許す範囲で SwiftUI-first を意識しています。
@@ -138,25 +156,6 @@ StateObservationKit は、プラットフォームが許す範囲で SwiftUI-fir
 - Reducer 実行を逐次化して順序を保証する
 
 目標は、名前だけ変えた ViewModel パターンを作ることではありません。View が state を直接観測でき、明示的な入力を受け付ける Machine を自然に扱えるようにすることです。
-
-## オンボーディング導線とサンプル構成
-
-思想型 OSS として、文書は次の順で理解できることを重視します。
-
-1. 思想（なぜ必要か）
-2. 図（どう責務分離するか）
-3. 具体例（どう遷移を表現するか）
-4. 導入理由（なぜこのトレードオフか）
-
-README と architecture 文書はこの導線で整合し、新規利用者が概念とコードを対応づけやすい状態を保ちます。
-
-サンプルアプリは機能量よりも「推奨アーキテクチャを教える構成」を優先します。
-
-- TodoApp: 基本遷移モデルと入力境界
-- ChatApp: 非同期 effect、順序保証、失敗ハンドリング
-- PlayerApp: `canSend(_:)`、projection、SwiftUI ergonomics
-
-全サンプルで依存方向（`View -> StateMachine -> UseCase / Domain -> Infrastructure`）を明示し、View 層からの直接 state mutation は避けます。
 
 ## このプロジェクトが避けるもの
 

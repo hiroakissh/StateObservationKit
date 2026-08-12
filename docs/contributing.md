@@ -21,11 +21,15 @@ StateObservationKit への貢献を歓迎します。本ガイドでは、Pull R
 
 - Q2 の変更: `docs/q2_execution_plan.ja.md`
 - Q1 の変更: `docs/q1_execution_plan.ja.md`
+- Clean Architecture 統合の変更: `docs/clean_architecture_guide.ja.md`
+- Observation 観測性・Debug Overlay の変更: `docs/observability_guide.ja.md`
+- Q4 の変更: `docs/q4_execution_plan.ja.md`
 
 ## 開発方針
 - 新しい StateMachine 型を追加する場合は、`ObservationDrivenStateMachine` または `TransitionDrivenStateMachine` を拡張し、既存の API と一貫した設計を保ってください。
 - 状態や入力を追加する際は、すべてのケースを列挙したテストを用意し、`default` ケースに依存しない遷移を保証してください。
 - `docs/architecture.md` に記載の依存方向 `View -> StateMachine -> UseCase / Domain -> Infrastructure` を満たしていることを確認してください。
+- UseCase や Infrastructure は Protocol / Environment 経由で注入し、StateMachine や View の中で concrete 実装を生成しないでください。
 - 対象タスクを該当四半期の実行計画（Q1/Q2）にある Milestone / Issue へ紐付けてから着手してください。
 
 ## コード品質
@@ -51,9 +55,7 @@ swift build -Xswiftc -strict-concurrency=complete
 
 - コード変更、public API 変更、sample 変更、test 変更を含む場合は `./scripts/validate.sh` を実行してください。
 - docs-only change でローカルの Swift 検証を省略する場合は `./scripts/validate.sh docs-only` を使い、PR 本文や進捗報告に skip reason を明記してください。
-- macOS hosted runner 上の追加検証として、必要に応じて `make test-xcode` または `make ci` を使ってください。
-- format は `swift-format` を採用し、ローカルでは `make format` / `make format-check` を入口にします。
-- CI は `.github/workflows/ci.yml` と `.github/workflows/format.yml` から `Makefile` / `scripts/` の入口を呼び出します。ローカルと CI で別の検証手順を増やさないようにしてください。
+- CI は `.github/workflows/swift-test.yml` から同じ script を呼び出す前提で維持します。ローカルと CI で別の検証手順を増やさないようにしてください。
 
 ## Repo-local Skill
 

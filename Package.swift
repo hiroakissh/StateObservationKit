@@ -12,11 +12,21 @@ let package = Package(
             name: "StateObservationKit",
             targets: ["StateObservationKit"]
         ),
+        .executable(
+            name: "StateObservationKitTimerExample",
+            targets: ["StateObservationKitTimerExample"]
+        ),
     ],
     targets: [
         .target(
             name: "StateObservationKit",
             path: "Sources"
+        ),
+        .executableTarget(
+            name: "StateObservationKitTimerExample",
+            dependencies: ["StateObservationKit"],
+            path: "Examples/TimerApp",
+            exclude: ["README.md"]
         ),
         .testTarget(
             name: "StateObservationKitTests",
