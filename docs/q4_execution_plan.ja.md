@@ -17,7 +17,7 @@
 | M2 Observation tracing | Observation Actionのqueue lifecycleを記録する | `ObservationTraceEvent`, `ObservationTraceRecorder`, trace tests | 実装済み |
 | M3 Logging / Debug Overlay | 開発時の状態観測をUI・ログへ接続する | `ObservationTraceLogger`, `ObservationDebugOverlay`, guide | 実装済み |
 | M4 Example applications | 実運用に近い状態駆動の例を提供する | `TimerExampleScreenModel`, `TimerExampleView`, SwiftPM executable target, tests | 実装済み |
-| M5 Testing and release gate | 仕様・ドキュメント・検証を揃える | roadmap update、標準validation、PR | 標準validation済み、PR公開待ち |
+| M5 Testing and release gate | 仕様・ドキュメント・検証を揃える | roadmap update、標準validation、PR | 標準validation済み、Draft PR #29公開済み、CI確認中 |
 
 ## Observation event contract
 
