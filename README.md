@@ -146,6 +146,18 @@ paused  --play-->  playing
 
 This makes behavior reviewable, testable, and easier to evolve safely.
 
+The package also includes focused machine and observability utilities:
+
+| Type | Purpose | Typical use |
+| --- | --- | --- |
+| `TransitionDrivenStateMachine` | Makes transitions and effects explicit with strongly typed `enum` definitions. | Application flows, orchestration, business logic control |
+| `ObservationDrivenStateMachine` | Publishes state reactively for UI layers and serializes reducer execution. | SwiftUI-facing state machines, Observation integration, UI availability checks, and projection-driven views |
+| `ObservationDrivenStateMachineMock` | Replaces async behavior with deterministic synchronous state changes for tests. | Unit tests, UI tests, previews |
+| `ObservationTraceRecorder` / `ObservationTraceLogger` | Records and emits the ordered Observation Action lifecycle and committed state sequence. | Queue verification, development logging, debugging |
+| `ObservationDebugOverlay` | Renders the machine state and latest reducer lifecycle in SwiftUI. | Development overlays |
+| `TransitionRecorder` | Records committed transitions, actions, and state sequences in order. | Transition history assertions, debugging, follow-up action tracing |
+| `StateSequenceRecorder` | Records arbitrary state snapshots with a lightweight API. | Hook-based state sequence assertions, previews, simple tracing |
+
 ## Lightweight Alternative
 
 StateObservationKit provides a minimal architecture foundation with:
@@ -440,6 +452,14 @@ The snippet above is the smallest possible example, so the View talks to the mac
 ### README
 
 - [Japanese README](README.ja.md)
+- [Japanese roadmap](ROADMAP.ja.md)
+- [Japanese architecture document](docs/architecture.ja.md)
+- [Clean Architecture Integration Guide](docs/clean_architecture_guide.md)
+- [Japanese Clean Architecture guide](docs/clean_architecture_guide.ja.md)
+- [Observation Observability and Debugging Guide](docs/observability_guide.md)
+- [Japanese Observation observability guide](docs/observability_guide.ja.md)
+- [Usage guide](docs/usage.md)
+- [Q4 execution plan](docs/q4_execution_plan.ja.md)
 
 ## 2026 Roadmap Snapshot
 

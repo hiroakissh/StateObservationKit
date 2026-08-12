@@ -310,6 +310,36 @@ TextField(
 )
 ```
 
+## 6. Observation の観測と開発用 Debug Overlay
+
+Observation 系 Machine の Action lifecycle を追跡する場合は、`ObservationTraceRecorder` と `ObservationTraceLogger` を init 時に渡します。
+
+```swift
+let recorder = ObservationTraceRecorder<FormSubmissionState, FormSubmissionAction>()
+let logger = ObservationTraceLogger { message in
+    print("[Task] \(message)")
+}
+
+let machine = ObservationDrivenStateMachine(
+    initial: .idle,
+    canSend: { state, action in
+        FormSubmissionExample.canSend(state: state, action: action)
+    },
+    reducer: { state, action in
+        FormSubmissionExample.reduce(state: &state, action: action)
+    },
+    traceRecorder: recorder,
+    logger: logger
+)
+
+_ = await machine.send(.start)
+print(recorder.stateSequence)
+```
+
+各 Action は `enqueued` → `started` → `committed` または `rejected` の順で記録されます。`stateSequence` は commit 済みの状態だけを返し、`snapshot` は無効入力を含む全イベントを返します。
+
+Observation と SwiftUI が使える環境では、開発中だけ `ObservationDebugOverlay(machine:)` を View に重ねられます。状態、最後の Action、Reducer phase、pending 数を表示します。詳しくは [Observation 観測・デバッグガイド](observability_guide.ja.md) と同梱の `TimerExampleView` を参照してください。
+
 このパターンを使うと、View は値の変更を直接 state に書き込まず、常に Action 経由で扱えます。
 
 これらの手順をベースに、ドメイン固有の状態・入力・副作用を組み合わせることで、状態駆動なアプリケーションを段階的に構築できます。

@@ -4,6 +4,13 @@
 
 Q1 で定義した API 契約（`Action` / `ActionType` を含む current public contract）を維持しつつ、Q2 では「依存の境界」と「UseCase 統合の型」を強化します。
 
+## 現在の進捗
+
+- **M1 DI 境界の標準化**: `FormSubmissionExample` と既存の `PlayerExample` で Protocol / Environment 注入を実装・テスト済み。
+- **M2 UseCase 統合パターンの定着**: pure reducer、ScreenModel、UseCase 結果から follow-up Action への変換を日英ガイドとサンプルへ反映済み。
+- **M3 Layer Separation Guide の実運用化**: 統合ガイドと contributor 導線を追加済み。永続化・ネットワーク・タイマーのサンプルカタログ拡張は継続中。
+- **M4 Q3/Q4 へ接続する拡張点の固定**: Observation の観測性APIと実運用サンプルをQ4作業で接続する予定。
+
 ## Q2 の完了条件
 
 - Machine が concrete infrastructure 実装へ直接依存しない構造を、API / docs / sample / tests で説明・実証できる。

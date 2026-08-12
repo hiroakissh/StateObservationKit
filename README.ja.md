@@ -146,6 +146,18 @@ paused  --play-->  playing
 
 この形にすると、システムの振る舞いをレビューしやすく、テストしやすく、変更影響を追いやすくなります。
 
+パッケージには、状態遷移と観測を目的にした次のユーティリティも含まれています。
+
+| 種別 | 目的 | 主な利用シーン |
+| --- | --- | --- |
+| `TransitionDrivenStateMachine` | 型安全な `enum` で遷移と副作用を明示化する | アプリケーションフロー、業務ロジック制御、オーケストレーション |
+| `ObservationDrivenStateMachine` | UI 層向けに状態をリアクティブに公開し、Reducer 実行を逐次化する | SwiftUI と Observation を使う状態管理、`canSend` と projection を伴う UI 制御 |
+| `ObservationDrivenStateMachineMock` | 非同期処理を排除し、同期的で決定的な状態検証を可能にする | ユニットテスト、UI テスト、プレビュー |
+| `ObservationTraceRecorder` / `ObservationTraceLogger` | Observation の Action lifecycle と commit 済み state sequence を記録・出力する | 順序検証、開発時ログ、デバッグ |
+| `ObservationDebugOverlay` | Machine の状態と最新の Reducer lifecycle を SwiftUI に表示する | 開発用オーバーレイ |
+| `TransitionRecorder` | commit 済みの transition / action / state sequence を順序付きで記録する | 遷移履歴の検証、デバッグ、follow-up action の追跡 |
+| `StateSequenceRecorder` | 任意の state 列を軽量に記録する | `hook` を使った状態列検証、プレビュー、簡易トレース |
+
 ## Lightweight Alternative
 
 StateObservationKit は「構造を得るための最小限の土台」を提供します。
@@ -415,6 +427,12 @@ TextField(
 - [ロードマップ](ROADMAP.ja.md)
 - [Architecture](docs/architecture.md)
 - [アーキテクチャ](docs/architecture.ja.md)
+- [Clean Architecture 統合ガイド](docs/clean_architecture_guide.ja.md)
+- [Clean Architecture Integration Guide](docs/clean_architecture_guide.md)
+- [Observation 観測・デバッグガイド](docs/observability_guide.ja.md)
+- [Observation Observability and Debugging Guide](docs/observability_guide.md)
+- [Q2 実行計画](docs/q2_execution_plan.ja.md)
+- [Q4 実行計画](docs/q4_execution_plan.ja.md)
 - [Usage](docs/usage.md)
 - [Philosophy](docs/philosophy.md)
 

@@ -21,11 +21,15 @@ StateObservationKit への貢献を歓迎します。本ガイドでは、Pull R
 
 - Q2 の変更: `docs/q2_execution_plan.ja.md`
 - Q1 の変更: `docs/q1_execution_plan.ja.md`
+- Clean Architecture 統合の変更: `docs/clean_architecture_guide.ja.md`
+- Observation 観測性・Debug Overlay の変更: `docs/observability_guide.ja.md`
+- Q4 の変更: `docs/q4_execution_plan.ja.md`
 
 ## 開発方針
 - 新しい StateMachine 型を追加する場合は、`ObservationDrivenStateMachine` または `TransitionDrivenStateMachine` を拡張し、既存の API と一貫した設計を保ってください。
 - 状態や入力を追加する際は、すべてのケースを列挙したテストを用意し、`default` ケースに依存しない遷移を保証してください。
 - `docs/architecture.md` に記載の依存方向 `View -> StateMachine -> UseCase / Domain -> Infrastructure` を満たしていることを確認してください。
+- UseCase や Infrastructure は Protocol / Environment 経由で注入し、StateMachine や View の中で concrete 実装を生成しないでください。
 - 対象タスクを該当四半期の実行計画（Q1/Q2）にある Milestone / Issue へ紐付けてから着手してください。
 
 ## コード品質

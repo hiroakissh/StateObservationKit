@@ -126,6 +126,24 @@ In practice, this can stay lightweight by deriving a view-facing model with `mac
 - `ObservationDrivenStateMachineMock` mirrors the `dispatch(_:)` / `send(_:)` surface, but runs its reducer synchronously for deterministic state assertions.
 - Use the real `ObservationDrivenStateMachine` when validating reducer queue ordering or completion semantics; use the mock for previews, reducer-focused tests, and orchestration tests.
 
+## Observation observability
+
+`ObservationDrivenStateMachine` can expose the Action lifecycle without changing the state mutation path:
+
+```text
+enqueued
+   ↓
+started
+   ↓
+committed / rejected
+```
+
+- `ObservationTraceRecorder` stores all events and the committed state sequence in order.
+- `ObservationTraceLogger` connects events to print, unified logging, or an application-owned logging backend.
+- `ObservationDebugOverlay` renders state, the last Action, the reducer phase, and pending count during development.
+
+Trace events are emitted on the MainActor in the same order as reducer queue completion. Keep sinks lightweight and treat them as observers that never mutate machine state.
+
 ## SwiftUI Ergonomics
 
 StateObservationKit is intentionally SwiftUI-first where the platform allows it:

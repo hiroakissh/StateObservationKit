@@ -1,3 +1,4 @@
+import Foundation
 import XCTest
 #if canImport(SwiftUI)
 import SwiftUI
@@ -135,6 +136,67 @@ final class ObservationDrivenStateMachineTests: XCTestCase {
         XCTAssertEqual(machine.state, ["first", "second"])
     }
 
+    @MainActor
+    func testObservationTraceRecorderCapturesOrderedLifecycleAndStateSequence() async {
+        let recorder = ObservationTraceRecorder<String, String>()
+        let logMessages = MessageRecorder()
+        let logger = ObservationTraceLogger { logMessages.record($0) }
+        let handlerRecorder = ObservationTraceRecorder<String, String>()
+        let machine = ObservationDrivenStateMachine(
+            initial: "idle",
+            reducer: { state, action in
+                if action == "start" {
+                    state = "running"
+                }
+            },
+            traceRecorder: recorder,
+            logger: logger,
+            traceHandler: { event in
+                handlerRecorder.record(event)
+            }
+        )
+
+        let committedState = await machine.send("start")
+
+        XCTAssertEqual(committedState, "running")
+        XCTAssertEqual(
+            recorder.snapshot.map(\.phase),
+            [.enqueued, .started, .committed]
+        )
+        XCTAssertEqual(recorder.snapshot.map(\.sequence), [1, 2, 3])
+        XCTAssertEqual(recorder.acceptedActions, ["start"])
+        XCTAssertEqual(recorder.stateSequence, ["idle", "running"])
+        XCTAssertEqual(handlerRecorder.snapshot.map(\.phase), recorder.snapshot.map(\.phase))
+        XCTAssertEqual(logMessages.snapshot.count, 3)
+        XCTAssertEqual(machine.debugSnapshot.state, "running")
+        XCTAssertEqual(machine.debugSnapshot.lastAction, "start")
+        XCTAssertEqual(machine.debugSnapshot.lastPhase, ObservationTracePhase.committed)
+    }
+
+    @MainActor
+    func testObservationTraceRecordsRejectedActionWithoutStateCommit() async {
+        let recorder = ObservationTraceRecorder<String, String>()
+        let machine = ObservationDrivenStateMachine(
+            initial: "idle",
+            canSend: { _, _ in false },
+            reducer: { state, _ in
+                state = "should-not-commit"
+            },
+            traceRecorder: recorder
+        )
+
+        let resultingState = await machine.send("blocked")
+
+        XCTAssertEqual(resultingState, "idle")
+        XCTAssertEqual(machine.state, "idle")
+        XCTAssertEqual(
+            recorder.snapshot.map(\.phase),
+            [.enqueued, .started, .rejected]
+        )
+        XCTAssertEqual(recorder.acceptedActions, [])
+        XCTAssertEqual(recorder.stateSequence, ["idle"])
+    }
+
 #if canImport(SwiftUI)
     @MainActor
     func testBindingDispatchesActionAndProjectionDerivesViewState() async {
@@ -223,11 +285,92 @@ final class ObservationDrivenStateMachineTests: XCTestCase {
         XCTAssertTrue(model.canSend(.pause))
         XCTAssertEqual(machine.receivedActions, [.play])
     }
+
+    @MainActor
+    func testFormSubmissionScreenModelUsesInjectedUseCaseAndCommitsFollowUp() async {
+        let useCase = RecordingFormSubmissionUseCase()
+        let model = FormSubmissionScreenModel(
+            environment: FormSubmissionEnvironment(useCase: useCase)
+        )
+        let draft = FormSubmissionDraft(title: "Hello", body: "World")
+
+        _ = await model.sendAndWait(.start)
+        _ = await model.sendAndWait(.titleChanged(draft.title))
+        _ = await model.sendAndWait(.bodyChanged(draft.body))
+        let finalState = await model.sendAndWait(.submit)
+
+        XCTAssertEqual(finalState, .submitted(draft))
+        XCTAssertEqual(model.state, .submitted(draft))
+        let submittedDrafts = await useCase.submittedDrafts
+        XCTAssertEqual(submittedDrafts, [draft])
+    }
+
+    @MainActor
+    func testFormSubmissionScreenModelMapsUseCaseFailureToState() async {
+        let useCase = RecordingFormSubmissionUseCase(shouldFail: true)
+        let model = FormSubmissionScreenModel(
+            environment: FormSubmissionEnvironment(useCase: useCase)
+        )
+        let draft = FormSubmissionDraft(title: "Hello", body: "World")
+
+        _ = await model.sendAndWait(.start)
+        _ = await model.sendAndWait(.titleChanged(draft.title))
+        _ = await model.sendAndWait(.bodyChanged(draft.body))
+        let finalState = await model.sendAndWait(.submit)
+
+        guard case .failed(let submittedDraft, let message) = finalState else {
+            return XCTFail("Expected failed form submission state")
+        }
+        XCTAssertEqual(submittedDraft, draft)
+        XCTAssertFalse(message.isEmpty)
+    }
+
+    @MainActor
+    func testTimerExampleRecordsCommittedStateSequenceWithoutWaitingForTicker() async {
+        let model = TimerExampleScreenModel(duration: 3)
+
+        let started = await model.send(.start(duration: 3))
+        let firstTick = await model.send(.tick)
+        let secondTick = await model.send(.tick)
+        let completed = await model.send(.tick)
+
+        XCTAssertEqual(started, .running(remainingSeconds: 3))
+        XCTAssertEqual(firstTick, .running(remainingSeconds: 2))
+        XCTAssertEqual(secondTick, .running(remainingSeconds: 1))
+        XCTAssertEqual(completed, .completed)
+        XCTAssertEqual(
+            model.traceRecorder.stateSequence,
+            [
+                .idle,
+                .running(remainingSeconds: 3),
+                .running(remainingSeconds: 2),
+                .running(remainingSeconds: 1),
+                .completed
+            ]
+        )
+    }
 #endif
 }
 
 private enum SampleAsyncResultError: Error {
     case example
+}
+
+private final class MessageRecorder: @unchecked Sendable {
+    private let lock = NSLock()
+    private var messages: [String] = []
+
+    func record(_ message: String) {
+        lock.lock()
+        defer { lock.unlock() }
+        messages.append(message)
+    }
+
+    var snapshot: [String] {
+        lock.lock()
+        defer { lock.unlock() }
+        return messages
+    }
 }
 
 #if canImport(SwiftUI)
@@ -243,5 +386,21 @@ private actor NoOpPlayerUseCase: PlayerUseCaseProtocol {
     func pause() async throws {}
     func resume() async throws {}
     func stop() async throws {}
+}
+
+private actor RecordingFormSubmissionUseCase: FormSubmissionUseCaseProtocol {
+    private let shouldFail: Bool
+    private(set) var submittedDrafts: [FormSubmissionDraft] = []
+
+    init(shouldFail: Bool = false) {
+        self.shouldFail = shouldFail
+    }
+
+    func submit(_ draft: FormSubmissionDraft) async throws {
+        submittedDrafts.append(draft)
+        if shouldFail {
+            throw SampleAsyncResultError.example
+        }
+    }
 }
 #endif
